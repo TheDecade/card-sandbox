@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { CardEditScreen } from '../features/cardEdit/CardEditScreen';
-import { GestureLab } from '../features/playtest/GestureLab';
+import { PlaytestScreen, ResetPlaytestDialog } from '../features/playtest/PlaytestScreen';
+import { startPlaytestAutosave } from '../persistence/autosave';
+import { repos } from '../persistence/repositories';
 import { useLibrary } from '../state/libraryStore';
-import { ConfirmDialog } from '../ui/Modal';
+import { usePlaytest } from '../state/playtestStore';
 import { UpdateToast } from './UpdateToast';
 import { formatBytes, isStandalone, requestPersistentStorage, type StorageStatus } from './platform';
 
@@ -14,24 +16,36 @@ export function App() {
   const [storage, setStorage] = useState<StorageStatus | null>(null);
   const standalone = isStandalone();
   const libraryStatus = useLibrary((s) => s.status);
+  const playtestStatus = usePlaytest((s) => s.status);
   const libraryError = useLibrary((s) => s.error);
+  const playtestError = usePlaytest((s) => s.error);
+  const loadNotice = usePlaytest((s) => s.loadNotice);
 
   useEffect(() => {
     requestPersistentStorage().then(setStorage, () => setStorage(null));
+    const autosave = startPlaytestAutosave(usePlaytest, repos);
     void useLibrary.getState().load();
+    void usePlaytest.getState().load();
+    return () => autosave.stop();
   }, []);
 
-  if (libraryStatus !== 'ready') {
+  const retry = () => {
+    void useLibrary.getState().load();
+    void usePlaytest.getState().load();
+  };
+
+  if (libraryStatus !== 'ready' || playtestStatus !== 'ready') {
+    const failed = libraryStatus === 'error' || playtestStatus === 'error';
     return (
       <div className="app">
         <main className="menu">
-          {libraryStatus === 'loading' ? (
+          {!failed ? (
             <p className="muted">Loading…</p>
           ) : (
             <>
               <p>Your cards could not be loaded.</p>
-              <p className="muted">{libraryError}</p>
-              <button className="btn btn-big" onClick={() => void useLibrary.getState().load()}>
+              <p className="muted">{libraryError ?? playtestError}</p>
+              <button className="btn btn-big" onClick={retry}>
                 Try again
               </button>
             </>
@@ -47,7 +61,7 @@ export function App() {
 
       {screen === 'menu' && <MainMenu onOpen={setScreen} onReset={() => setConfirmReset(true)} />}
       {screen === 'playtest' && (
-        <GestureLab onBack={() => setScreen('menu')} />
+        <PlaytestScreen onBack={() => setScreen('menu')} />
       )}
       {screen === 'cardEdit' && (
         <CardEditScreen onBack={() => setScreen('menu')} />
@@ -56,15 +70,14 @@ export function App() {
         <Options storage={storage} standalone={standalone} onBack={() => setScreen('menu')} />
       )}
 
-      {confirmReset && (
-        <ConfirmDialog
-          title="Reset Playtest?"
-          message="All hands, tables, graveyards, exile zones and counters will be discarded and every deck rebuilt from the enabled cards. Your card list is not affected."
-          confirmLabel="Reset"
-          danger
-          onConfirm={() => setConfirmReset(false)}
-          onCancel={() => setConfirmReset(false)}
-        />
+      {confirmReset && <ResetPlaytestDialog onDone={() => setConfirmReset(false)} />}
+      {loadNotice && (
+        <div className="toast" role="status">
+          <span>{loadNotice}</span>
+          <button className="btn btn-small" onClick={() => usePlaytest.setState({ loadNotice: null })}>
+            OK
+          </button>
+        </div>
       )}
 
       <UpdateToast />
@@ -107,7 +120,6 @@ function ScreenHeader({ title, onBack }: { title: string; onBack: () => void }) 
     </header>
   );
 }
-
 
 function Options({
   storage,

@@ -187,6 +187,9 @@
 .nav-arrow:active {
   filter: brightness(1.3);
 }
+.nav-arrow:disabled {
+  opacity: 0.35;
+}
 .hand {
   flex: 1;
   min-width: 0;
@@ -206,25 +209,6 @@
 .hand-empty {
   color: var(--muted);
   font-weight: 600;
-}
-
-/* ---------- Gesture log (test only) ---------- */
-.gesture-log {
-  position: absolute;
-  top: 12px;
-  right: 24px;
-  z-index: 100;
-  width: min(330px, 40%);
-  margin: 0;
-  padding: 10px 12px;
-  list-style: none;
-  border-radius: 10px;
-  background: rgb(0 0 0 / 0.45);
-  font: 0.8rem/1.5 ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  pointer-events: none;
-}
-.gesture-log li:first-child {
-  color: var(--accent);
 }
 
 /* ---------- Dialogs ---------- */
@@ -269,4 +253,25 @@
 .slider-row output {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.table-subtitle {
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.canvas-hint {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 0 20% 0 calc(var(--card-w) + 80px);
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.5;
+}
+.dialog-actions-stack {
+  flex-direction: column;
+  align-items: stretch;
 }

@@ -1,9 +1,10 @@
 // The only code that talks to IndexedDB. Everything else goes through these functions.
 import type { CardDefinition } from '../domain/cards/types';
 import type { ImageAsset, ImageMeta, ImageVariant } from '../domain/images/types';
+import type { PlaytestState } from '../domain/playtest/types';
 import type { Settings } from '../domain/settings/types';
 import { db as defaultDb, type SandboxDB } from './db';
-import { cardDefinitionSchema, parseSettings } from './schemas';
+import { cardDefinitionSchema, parseSettings, playtestSchema } from './schemas';
 
 export function createRepositories(db: SandboxDB = defaultDb) {
   return {
@@ -52,6 +53,22 @@ export function createRepositories(db: SandboxDB = defaultDb) {
 
     async saveSettings(settings: Settings): Promise<void> {
       await db.kv.put({ key: 'settings', value: settings });
+    },
+
+    /** The saved playtest; `unreadable` when something was stored but couldn't be understood. */
+    async loadPlaytest(): Promise<{ state: PlaytestState | null; unreadable: boolean }> {
+      const raw = (await db.kv.get('playtest'))?.value;
+      if (raw === undefined) return { state: null, unreadable: false };
+      const parsed = playtestSchema.safeParse(raw);
+      if (!parsed.success) {
+        console.warn('Saved playtest is unreadable', parsed.error);
+        return { state: null, unreadable: true };
+      }
+      return { state: parsed.data, unreadable: false };
+    },
+
+    async savePlaytest(state: PlaytestState): Promise<void> {
+      await db.kv.put({ key: 'playtest', value: state });
     },
   };
 }

@@ -26,3 +26,35 @@ export function parseSettings(raw: unknown): Settings {
   const parsed = settingsSchema.safeParse(merged);
   return parsed.success ? parsed.data : { ...DEFAULT_SETTINGS };
 }
+
+const zoneIdSchema = z.enum(['deck', 'hand', 'canvas', 'graveyard', 'exile']);
+const vec2Schema = z.object({ x: z.number(), y: z.number() });
+const idList = z.array(z.string());
+
+export const playtestSchema = z.object({
+  schemaVersion: z.number().int(),
+  id: z.string(),
+  createdAt: z.number(),
+  players: z
+    .array(
+      z.object({
+        id: z.number().int(),
+        zones: z.object({ deck: idList, hand: idList, canvas: idList, graveyard: idList, exile: idList }),
+      }),
+    )
+    .min(1),
+  instances: z.record(
+    z.string(),
+    z.object({
+      id: z.string(),
+      definitionId: z.string(),
+      ownerId: z.number().int().min(0),
+      zone: zoneIdSchema,
+      position: vec2Schema.nullable(),
+      faceUp: z.boolean(),
+      tapped: z.boolean(),
+      counters: z.record(z.string(), z.number()),
+    }),
+  ),
+  currentPlayer: z.number().int(),
+});

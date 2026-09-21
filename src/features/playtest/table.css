@@ -502,3 +502,27 @@
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- Player switch: the new table slides in ---------- */
+.canvas-layer {
+  position: absolute;
+  inset: 0;
+}
+.slide-from-right {
+  animation: slide-from-right 220ms ease-out;
+}
+.slide-from-left {
+  animation: slide-from-left 220ms ease-out;
+}
+@keyframes slide-from-right {
+  from {
+    transform: translateX(25%);
+    opacity: 0;
+  }
+}
+@keyframes slide-from-left {
+  from {
+    transform: translateX(-25%);
+    opacity: 0;
+  }
+}

@@ -111,6 +111,14 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.row-type {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+.field-type input {
+  max-width: 14em;
+}
 .row-desc {
   color: var(--muted);
   overflow: hidden;
@@ -135,6 +143,23 @@
   background: #4a3b3b;
   color: #ffc9c4;
   font-size: 0.8rem;
+  font-weight: 700;
+}
+.row-tag-bound {
+  background: #2b313a;
+  color: #dfe6ef;
+}
+.stepper-small {
+  gap: 8px;
+}
+.stepper-small .btn {
+  width: 44px;
+  padding: 0;
+  font-size: 1.3rem;
+}
+.bound-value {
+  min-width: 5.5em;
+  text-align: center;
   font-weight: 700;
 }
 .card-row.is-disabled .row-thumb,

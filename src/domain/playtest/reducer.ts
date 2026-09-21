@@ -72,6 +72,31 @@ export function applyCommand(state: PlaytestState, cmd: PlaytestCommand): Playte
         draft.rules = { ...draft.rules, ...cmd.rules };
         break;
 
+      case 'addInstance': {
+        const inst = cmd.instance;
+        const player = draft.players[inst.ownerId];
+        if (!player || draft.instances[inst.id]) return;
+        draft.instances[inst.id] = { ...inst, counters: { ...inst.counters } };
+        player.zones[inst.zone].push(inst.id);
+        break;
+      }
+
+      case 'removeInstance': {
+        const inst = draft.instances[cmd.instanceId];
+        if (!inst) return;
+        const zone = draft.players[inst.ownerId]?.zones[inst.zone];
+        const at = zone?.indexOf(cmd.instanceId) ?? -1;
+        if (zone && at >= 0) zone.splice(at, 1);
+        delete draft.instances[cmd.instanceId];
+        break;
+      }
+
+      case 'unbindInstance': {
+        const inst = draft.instances[cmd.instanceId];
+        if (inst) inst.bound = false;
+        break;
+      }
+
       case 'setPlayerValue': {
         const player = draft.players[cmd.playerId];
         if (!player || !Number.isFinite(cmd.value)) return;

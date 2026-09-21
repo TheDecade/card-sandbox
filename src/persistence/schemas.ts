@@ -12,9 +12,11 @@ export const cardDefinitionSchema = z.object({
   id: z.string().min(1),
   name: z.string(),
   cost: z.string(),
+  type: z.string().default(''), // added later: older cards have no type
   description: z.string(),
   imageId: z.string().nullable(),
   enabled: z.boolean(),
+  boundPlayer: z.number().int().min(0).default(0), // added later: older cards are unbound
   createdAt: z.number(),
   updatedAt: z.number(),
   extra: z.record(z.string(), z.unknown()).optional(),
@@ -66,6 +68,7 @@ export const playtestSchema = z.object({
       faceUp: z.boolean(),
       tapped: z.boolean(),
       counters: z.record(z.string(), z.number()),
+      bound: z.boolean().default(false), // added in v4
     }),
   ),
   currentPlayer: z.number().int(),

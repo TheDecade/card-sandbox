@@ -22,4 +22,8 @@ export type PlaytestCommand =
   | { type: 'addPlayers'; players: PlayerState[]; instances: CardInstance[] }
   | { type: 'removePlayersFrom'; playerId: PlayerId }
   | { type: 'setRules'; rules: Partial<PlaytestRules> }
-  | { type: 'setPlayerValue'; playerId: PlayerId; valueId: string; value: number };
+  | { type: 'setPlayerValue'; playerId: PlayerId; valueId: string; value: number }
+  // Player-bound cards changed mid-game:
+  | { type: 'addInstance'; instance: CardInstance } // placed in its zone (canvas: on top)
+  | { type: 'removeInstance'; instanceId: InstanceId }
+  | { type: 'unbindInstance'; instanceId: InstanceId }; // becomes an ordinary card where it is

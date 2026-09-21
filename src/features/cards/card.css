@@ -181,3 +181,26 @@
 .row-cost-pips {
   font-size: 1.05rem;
 }
+
+/* Type line: between the picture and the description, right-aligned. */
+.card-type {
+  margin-top: -1.5cqw;
+  text-align: right;
+  font-size: 7cqw;
+  font-weight: 700;
+  font-style: italic;
+  color: #5b5446;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Long costs shrink so the card name keeps its room. */
+.card-cost-pips[data-size='sm'] {
+  font-size: 6.5cqw;
+}
+.card-cost-pips[data-size='xs'] {
+  font-size: 5.2cqw;
+}
+.card-name {
+  min-width: 30%;
+}

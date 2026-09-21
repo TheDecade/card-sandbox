@@ -7,10 +7,13 @@ export type ImageId = string;
 export interface CardDefinition {
   id: CardId; // generated once, never edited
   name: string;
-  cost: string; // free text: "3", "X", "2R", ...
+  cost: string; // Oracle-style symbols "{2}{W}", or free text
+  type: string; // usually one short word, shown between the picture and the description
   description: string;
   imageId: ImageId | null; // reference into the image library, never a copy
   enabled: boolean; // only enabled cards go into newly built decks
+  /** 0 = not bound. N = starts on Player N's table instead of in the decks. */
+  boundPlayer: number;
   createdAt: number;
   updatedAt: number;
   extra?: Record<string, unknown>; // room for future custom properties
@@ -21,9 +24,11 @@ export function newCardDefinition(now = Date.now()): CardDefinition {
     id: newId(),
     name: '',
     cost: '',
+    type: '',
     description: '',
     imageId: null,
     enabled: true,
+    boundPlayer: 0,
     createdAt: now,
     updatedAt: now,
   };
@@ -34,9 +39,11 @@ export function cardFieldsDiffer(a: CardDefinition, b: CardDefinition): boolean 
   return (
     a.name !== b.name ||
     a.cost !== b.cost ||
+    a.type !== b.type ||
     a.description !== b.description ||
     a.imageId !== b.imageId ||
-    a.enabled !== b.enabled
+    a.enabled !== b.enabled ||
+    a.boundPlayer !== b.boundPlayer
   );
 }
 

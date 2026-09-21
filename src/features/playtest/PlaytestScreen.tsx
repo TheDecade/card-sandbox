@@ -4,6 +4,7 @@ import type { PlaytestCommand, ZoneTarget } from '../../domain/playtest/commands
 import type { InstanceId, PlaytestState, Vec2 } from '../../domain/playtest/types';
 import { viewCard, type VisibleCard } from '../../domain/playtest/visibility';
 import { useGestureConfig } from '../../gestures/config';
+import { useGestures } from '../../gestures/useGestures';
 import { getDropZoneRect, hitTestDropZone, setDropHover, useDropZone } from '../../gestures/dropZones';
 import type { Point } from '../../gestures/recognizer';
 import { useLibrary } from '../../state/libraryStore';
@@ -29,6 +30,7 @@ interface Drag {
 
 let dragCounter = 0;
 const SNAP_BACK_MS = 180;
+const SWIPE_MIN_PX = 60; // horizontal distance for a swipe on the table to switch player
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const ghostTransform = (p: Point, tapped: boolean) =>
@@ -217,8 +219,28 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
     if (el) setHandScrollable(el.scrollWidth > el.clientWidth + 1);
   });
 
-  const switchPlayer = (delta: number) =>
+  // The new table slides in from the side the player is "coming from".
+  const [slide, setSlide] = useState<'from-right' | 'from-left' | null>(null);
+  const switchPlayer = (delta: number) => {
+    if (playerCount < 2) return;
+    setSlide(delta > 0 ? 'from-right' : 'from-left');
     dispatch({ type: 'selectPlayer', playerId: (playerId + delta + playerCount) % playerCount });
+  };
+
+  // Swiping sideways on an empty part of the table switches player (cards handle their own drags).
+  const swipeStart = useRef<Point | null>(null);
+  const canvasGestures = useGestures({
+    onDragStart: ({ start }) => (swipeStart.current = start),
+    onDragEnd: (p) => {
+      const start = swipeStart.current;
+      swipeStart.current = null;
+      if (!start) return;
+      const dx = p.x - start.x;
+      const dy = p.y - start.y;
+      if (Math.abs(dx) >= SWIPE_MIN_PX && Math.abs(dx) > 1.5 * Math.abs(dy)) switchPlayer(dx < 0 ? 1 : -1);
+    },
+    onDragCancel: () => (swipeStart.current = null),
+  });
 
   const draggedId = drag?.source.instanceId ?? null;
   const ghostPoint = drag ? (dragRef.current ?? drag).point : null;
@@ -246,32 +268,34 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
       )}
 
       <div className="table-main">
-        <div className="canvas drop-zone" ref={canvasZone}>
-          {/* Stable DOM order, stacked by z-index: moving a node mid-drag would cancel the drag. */}
-          {[...player.zones.canvas].sort().map((id) => {
-            const inst = state.instances[id];
-            if (!inst?.position) return null;
-            return (
-              <PlayCard
-                key={id}
-                card={view(id)}
-                actions={cardActions(id, 'canvas')}
-                dragging={draggedId === id}
-                style={{
-                  left: `${inst.position.x * 100}%`,
-                  top: `${inst.position.y * 100}%`,
-                  zIndex: player.zones.canvas.indexOf(id) + 1,
-                  ...({ '--rot': inst.tapped ? '90deg' : '0deg' } as CSSProperties),
-                }}
-              />
-            );
-          })}
-          {Object.keys(state.instances).length === 0 && (
-            <p className="canvas-hint">
-              No enabled cards were in the list when this playtest started. Add cards in Card Edit, then
-              use Reset Playtest.
-            </p>
-          )}
+        <div className="canvas drop-zone" ref={canvasZone} {...canvasGestures}>
+          <div key={playerId} className={`canvas-layer${slide ? ` slide-${slide}` : ''}`}>
+            {/* Stable DOM order, stacked by z-index: moving a node mid-drag would cancel the drag. */}
+            {[...player.zones.canvas].sort().map((id) => {
+              const inst = state.instances[id];
+              if (!inst?.position) return null;
+              return (
+                <PlayCard
+                  key={id}
+                  card={view(id)}
+                  actions={cardActions(id, 'canvas')}
+                  dragging={draggedId === id}
+                  style={{
+                    left: `${inst.position.x * 100}%`,
+                    top: `${inst.position.y * 100}%`,
+                    zIndex: player.zones.canvas.indexOf(id) + 1,
+                    ...({ '--rot': inst.tapped ? '90deg' : '0deg' } as CSSProperties),
+                  }}
+                />
+              );
+            })}
+            {Object.keys(state.instances).length === 0 && (
+              <p className="canvas-hint">
+                No enabled cards were in the list when this playtest started. Add cards in Card Edit, then
+                use Reset Playtest.
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="corner">

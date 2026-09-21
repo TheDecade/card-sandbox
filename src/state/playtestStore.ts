@@ -5,7 +5,12 @@ import type { Settings } from '../domain/settings/types';
 import type { PlaytestCommand } from '../domain/playtest/commands';
 import { applyCommand } from '../domain/playtest/reducer';
 import { repairPlaytest } from '../domain/playtest/repair';
-import { createPlaytest, playerCountCommands, shuffleDeckCommand } from '../domain/playtest/setup';
+import {
+  createPlaytest,
+  playerCountCommands,
+  shuffleDeckCommand,
+  syncBoundCardCommands,
+} from '../domain/playtest/setup';
 import type { PlayerId, PlaytestState } from '../domain/playtest/types';
 import { repos as defaultRepos, type Repositories } from '../persistence/repositories';
 
@@ -25,6 +30,8 @@ export interface PlaytestStoreState {
   shuffleDeck(playerId: PlayerId): void;
   /** Adds players with fresh decks, or removes the highest-numbered ones. */
   setPlayerCount(count: number, cards: readonly CardDefinition[]): void;
+  /** Brings player-bound cards in line after cards were edited. */
+  syncBoundCards(cards: readonly CardDefinition[]): void;
 }
 
 type TableSettings = Pick<Settings, 'playerCount' | 'countersPersist'>;
@@ -85,6 +92,11 @@ export function createPlaytestStore(repos: Repositories) {
     setPlayerCount(count, cards) {
       const current = get().state;
       if (current) playerCountCommands(current, count, cards).forEach(get().dispatch);
+    },
+
+    syncBoundCards(cards) {
+      const current = get().state;
+      if (current) syncBoundCardCommands(current, cards).forEach(get().dispatch);
     },
   }));
 }

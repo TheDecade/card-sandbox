@@ -12,9 +12,11 @@ const CARDS: CardDefinition[] = [1, 2, 3].map((n) => ({
   id: `def${n}`,
   name: `Card ${n}`,
   cost: '1',
+  type: '',
   description: '',
   imageId: null,
   enabled: true,
+  boundPlayer: 0,
   createdAt: n,
   updatedAt: n,
 }));
@@ -90,7 +92,7 @@ describe('playtest store', () => {
     await new SandboxDB(dbName).kv.put({ key: 'playtest', value: { ...v1, players: oldPlayers, schemaVersion: 1 } });
     const { store, autosave } = await open();
     const s = store.getState().state!;
-    expect(s).toMatchObject({ schemaVersion: 3, rules: { countersPersist: true } });
+    expect(s).toMatchObject({ schemaVersion: 4, rules: { countersPersist: true } });
     expect(s.players.map((p) => p.values)).toEqual([{}, {}]);
     autosave.stop();
   });

@@ -54,7 +54,11 @@ export function CostView({ cost, className = '' }: { cost: string; className?: s
   const tokens = parseCost(cost);
   if (tokens.length === 0) return null;
   return (
-    <span className={`cost ${className}`} aria-label={`Cost ${cost}`}>
+    <span
+      className={`cost ${className}`}
+      aria-label={`Cost ${cost}`}
+      data-size={tokens.length >= 6 ? 'xs' : tokens.length >= 4 ? 'sm' : undefined}
+    >
       {tokens.map((t, i) => (
         <Pip key={i} token={t} />
       ))}

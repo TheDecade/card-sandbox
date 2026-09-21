@@ -1,7 +1,7 @@
 import type { CardId } from '../cards/types';
 import type { CounterColorId } from '../counters/colors';
 
-export const PLAYTEST_SCHEMA_VERSION = 3; // 2: added rules; 3: added player values
+export const PLAYTEST_SCHEMA_VERSION = 4; // 2: rules; 3: player values; 4: bound instances
 
 export type InstanceId = string;
 export type PlayerId = number; // 0-based index; shown as "Player N+1"
@@ -24,6 +24,8 @@ export interface CardInstance {
   faceUp: boolean;
   tapped: boolean;
   counters: Partial<Record<CounterColorId, number>>;
+  /** The copy of a player-bound card that belongs on its player's table (see CardDefinition.boundPlayer). */
+  bound: boolean;
 }
 
 export interface PlayerState {

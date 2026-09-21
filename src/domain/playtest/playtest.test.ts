@@ -5,7 +5,7 @@ import type { CardDefinition } from '../cards/types';
 import type { PlaytestCommand, ZoneTarget } from './commands';
 import { checkInvariants } from './invariants';
 import { applyCommand } from './reducer';
-import { createPlaytest, playerCountCommands, shuffleDeckCommand } from './setup';
+import { createPlaytest, playerCountCommands, shuffleDeckCommand, syncBoundCardCommands } from './setup';
 import type { PlaytestState } from './types';
 import { viewCard } from './visibility';
 
@@ -14,9 +14,11 @@ function card(n: number, enabled = true): CardDefinition {
     id: `def${n}`,
     name: `Card ${n}`,
     cost: String(n),
+    type: '',
     description: '',
     imageId: null,
     enabled,
+    boundPlayer: 0,
     createdAt: n,
     updatedAt: n,
   };
@@ -168,6 +170,61 @@ describe('counter persistence rule', () => {
     expect(off.rules.countersPersist).toBe(false);
     expect(off.instances[a]!.counters).toEqual({ red: 2, p2: 1 }); // existing counters untouched
     expect(run(off, { type: 'moveCard', instanceId: a, to: { zone: 'exile' } }).instances[a]!.counters).toEqual({});
+  });
+});
+
+describe('player-bound cards', () => {
+  const bound = (n: number, player: number, enabled = true) => ({ ...card(n, enabled), boundPlayer: player });
+  const defsOn = (s: PlaytestState, p: number, zone: 'deck' | 'canvas') =>
+    s.players[p]!.zones[zone].map((id) => s.instances[id]!.definitionId);
+
+  it('start face-up on their player’s table and stay out of every deck', () => {
+    const cards = [card(1), card(2), bound(7, 2), bound(8, 2), bound(9, 1, false), bound(10, 4)];
+    const s = createPlaytest(2, cards, { makeId: idMaker(), rand: noShuffle });
+    expect(defsOn(s, 0, 'canvas')).toEqual([]); // def9 is disabled
+    expect(defsOn(s, 1, 'canvas')).toEqual(['def7', 'def8']);
+    for (const p of [0, 1]) expect(defsOn(s, p, 'deck').sort()).toEqual(['def1', 'def2']);
+    const onTable = s.players[1]!.zones.canvas.map((id) => s.instances[id]!);
+    expect(onTable.every((i) => i.bound && i.faceUp && i.position !== null)).toBe(true);
+    expect(onTable[0]!.position).not.toEqual(onTable[1]!.position);
+    expect(checkInvariants(s)).toEqual([]);
+    // def10 is bound to Player 4, who isn't in this game: it sits out until that player is added.
+    const s4 = run(s, ...playerCountCommands(s, 4, cards, { makeId: idMaker2() }));
+    expect(defsOn(s4, 3, 'canvas')).toEqual(['def10']);
+  });
+
+  it('mid-game: binding a card puts a copy on that player’s table', () => {
+    const cards = [card(1), card(2)];
+    const s0 = createPlaytest(2, cards, { makeId: idMaker(), rand: noShuffle });
+    const edited = [card(1), { ...card(2), boundPlayer: 2 }];
+    const s = run(s0, ...syncBoundCardCommands(s0, edited, idMaker2()));
+    expect(defsOn(s, 1, 'canvas')).toEqual(['def2']);
+    expect(defsOn(s, 1, 'deck').sort()).toEqual(['def1', 'def2']); // existing copies left alone
+    expect(checkInvariants(s)).toEqual([]);
+    expect(syncBoundCardCommands(s, edited)).toEqual([]); // already in line: nothing to do
+  });
+
+  it('mid-game: changing the player moves the bound copy; 0 leaves it as an ordinary card', () => {
+    const cards = [card(1), bound(2, 1)];
+    const s0 = createPlaytest(2, cards, { makeId: idMaker(), rand: noShuffle });
+    const [copy] = s0.players[0]!.zones.canvas;
+    const moved = run(s0, ...syncBoundCardCommands(s0, [card(1), bound(2, 2)], idMaker2()));
+    expect(moved.instances[copy!]).toBeUndefined();
+    expect(defsOn(moved, 0, 'canvas')).toEqual([]);
+    expect(defsOn(moved, 1, 'canvas')).toEqual(['def2']);
+
+    const unbound = run(moved, ...syncBoundCardCommands(moved, [card(1), card(2)]));
+    const [kept] = unbound.players[1]!.zones.canvas;
+    expect(unbound.instances[kept!]).toMatchObject({ bound: false, zone: 'canvas' });
+    expect(checkInvariants(unbound)).toEqual([]);
+  });
+
+  it('mid-game: a bound copy that was moved (e.g. to the graveyard) is not duplicated', () => {
+    const cards = [card(1), bound(2, 1)];
+    const s0 = createPlaytest(1, cards, { makeId: idMaker(), rand: noShuffle });
+    const [copy] = s0.players[0]!.zones.canvas;
+    const s = run(s0, { type: 'moveCard', instanceId: copy!, to: { zone: 'graveyard' } });
+    expect(syncBoundCardCommands(s, cards)).toEqual([]);
   });
 });
 

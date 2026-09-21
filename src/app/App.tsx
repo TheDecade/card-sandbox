@@ -28,7 +28,14 @@ export function App() {
     const autosave = startPlaytestAutosave(usePlaytest, repos);
     void useLibrary.getState().load();
     void usePlaytest.getState().load();
-    return () => autosave.stop();
+    // Editing a card's player binding mid-game updates the running playtest.
+    const unsubscribe = useLibrary.subscribe((s, prev) => {
+      if (s.cards !== prev.cards && prev.status === 'ready') usePlaytest.getState().syncBoundCards(s.cards);
+    });
+    return () => {
+      unsubscribe();
+      autosave.stop();
+    };
   }, []);
 
   const retry = () => {

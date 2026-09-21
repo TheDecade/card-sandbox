@@ -146,10 +146,14 @@ function CardRow({
           {thumb && <img src={thumb} alt="" draggable={false} />}
         </span>
         <span className="row-text">
-          <span className="row-name">{displayName(card)}</span>
+          <span className="row-name">
+            {displayName(card)}
+            {card.type && <span className="row-type"> · {card.type}</span>}
+          </span>
           <span className="row-desc">{card.description || '—'}</span>
         </span>
         <CostView cost={card.cost} className="row-cost-pips" />
+        {card.boundPlayer > 0 && <span className="row-tag row-tag-bound">P{card.boundPlayer}</span>}
         {!card.enabled && <span className="row-tag">Disabled</span>}
       </button>
       <Toggle checked={card.enabled} label={`${displayName(card)} enabled`} onChange={onToggle} />

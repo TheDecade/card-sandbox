@@ -54,6 +54,7 @@ describe('Card Edit', () => {
     fireEvent.change(within(editor).getByPlaceholderText('Card name'), { target: { value: 'Ember Scout' } });
     fireEvent.change(within(editor).getByPlaceholderText('e.g. {2}{W}'), { target: { value: '2' } });
     fireEvent.click(within(editor).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     const row = await screen.findByRole('button', { name: /Ember Scout/ });
     expect(row).toHaveTextContent('2');
 
@@ -63,6 +64,7 @@ describe('Card Edit', () => {
     fireEvent.change(within(editor).getByPlaceholderText('Card name'), { target: { value: 'Ember Scout II' } });
     fireEvent.click(within(editor).getByRole('switch', { name: 'Enabled' }));
     fireEvent.click(within(editor).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(await screen.findByRole('button', { name: /Ember Scout II/ })).toHaveTextContent('Disabled');
     expect(screen.getByRole('tab', { name: /Disabled/ })).toHaveTextContent('1');
 

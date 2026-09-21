@@ -6,6 +6,7 @@ import { CostView } from './CostView';
 export interface CardContent {
   name: string;
   cost: string;
+  type?: string;
   description: string;
   imageUrl?: string | null;
   artHue?: number; // placeholder art color when there is no image
@@ -55,6 +56,7 @@ export function CardView({ card, faceUp = true }: { card?: CardContent; faceUp?:
             </div>
           )}
         </div>
+        {card.type ? <div className="card-type">{card.type}</div> : null}
         <div className="card-text">{card.description}</div>
       </div>
     </div>

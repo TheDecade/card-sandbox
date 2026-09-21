@@ -2,7 +2,8 @@
 import { DEFAULT_RULES, PLAYTEST_SCHEMA_VERSION, type PlaytestState } from '../domain/playtest/types';
 
 /** A playtest as it may have been saved by any earlier version. */
-export type StoredPlaytest = Omit<PlaytestState, 'rules' | 'players'> & {
+export type StoredPlaytest = Omit<PlaytestState, 'rules' | 'players' | 'instances'> & {
+  instances: Record<string, Omit<PlaytestState['instances'][string], 'bound'> & { bound?: boolean }>;
   rules?: Partial<PlaytestState['rules']>;
   players: (Omit<PlaytestState['players'][number], 'values'> & { values?: Record<string, number> })[];
 };
@@ -15,5 +16,7 @@ export function migratePlaytest(p: StoredPlaytest): PlaytestState {
     rules: { ...DEFAULT_RULES, ...p.rules },
     // v2 → v3: player values added; none set yet means every value is at its start.
     players: p.players.map((pl) => ({ ...pl, values: pl.values ?? {} })),
+    // v3 → v4: bound instances added; older games have none.
+    instances: Object.fromEntries(Object.entries(p.instances).map(([id, i]) => [id, { ...i, bound: i.bound ?? false }])),
   };
 }

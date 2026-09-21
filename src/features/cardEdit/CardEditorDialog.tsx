@@ -23,6 +23,7 @@ export function CardEditorDialog({
   onClose: () => void;
 }) {
   const saveCard = useLibrary((s) => s.saveCard);
+  const playerCount = useLibrary((s) => s.settings.playerCount);
   const [draft, setDraft] = useState(initial);
   const [pickingImage, setPickingImage] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -95,6 +96,16 @@ export function CardEditorDialog({
               <CostSymbolPad value={draft.cost} onChange={(cost) => update({ cost })} />
             </div>
 
+            <label className="field field-type">
+              <span className="field-label">Type</span>
+              <input
+                value={draft.type}
+                placeholder="e.g. Creature"
+                autoComplete="off"
+                onChange={(e) => update({ type: e.target.value })}
+              />
+            </label>
+
             <label className="field">
               <span className="field-label">Description</span>
               <textarea
@@ -114,6 +125,36 @@ export function CardEditorDialog({
               />
               <span className="muted field-hint">
                 {draft.enabled ? 'Included in new decks' : 'Left out of new decks'}
+              </span>
+            </div>
+
+            <div className="field field-row">
+              <span className="field-label">Bound to</span>
+              <div className="stepper stepper-small">
+                <button
+                  className="btn"
+                  aria-label="Bind to previous player"
+                  disabled={draft.boundPlayer <= 0}
+                  onClick={() => update({ boundPlayer: draft.boundPlayer - 1 })}
+                >
+                  −
+                </button>
+                <output className="bound-value" aria-label="Player binding">
+                  {draft.boundPlayer === 0 ? 'None' : `Player ${draft.boundPlayer}`}
+                </output>
+                <button
+                  className="btn"
+                  aria-label="Bind to next player"
+                  disabled={draft.boundPlayer >= Math.max(playerCount, draft.boundPlayer)}
+                  onClick={() => update({ boundPlayer: draft.boundPlayer + 1 })}
+                >
+                  +
+                </button>
+              </div>
+              <span className="muted field-hint">
+                {draft.boundPlayer === 0
+                  ? 'Shuffled into every deck'
+                  : `Starts on Player ${draft.boundPlayer}'s table, not in the decks`}
               </span>
             </div>
 

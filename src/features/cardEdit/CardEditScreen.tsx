@@ -7,6 +7,7 @@ import { Toggle } from '../../ui/Toggle';
 import { hueFromString } from '../cards/CardView';
 import { CostView } from '../cards/CostView';
 import { CardEditorDialog } from './CardEditorDialog';
+import { ImportCardsButton } from './ImportCards';
 import './cardEdit.css';
 
 type Filter = 'all' | 'enabled' | 'disabled';
@@ -19,6 +20,7 @@ export function CardEditScreen({ onBack }: { onBack: () => void }) {
   const [filter, setFilter] = useState<Filter>('all');
   const [editing, setEditing] = useState<{ card: CardDefinition; isNew: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const counts = useMemo(() => {
     const enabled = cards.filter((c) => c.enabled).length;
@@ -60,6 +62,7 @@ export function CardEditScreen({ onBack }: { onBack: () => void }) {
             </button>
           ))}
         </div>
+        <ImportCardsButton onDone={setNotice} />
         <button
           className="btn btn-primary"
           onClick={() => setEditing({ card: newCardDefinition(), isNew: true })}
@@ -67,6 +70,11 @@ export function CardEditScreen({ onBack }: { onBack: () => void }) {
           + New card
         </button>
       </header>
+      {notice && (
+        <p className="picker-status import-notice" role="status">
+          {notice}
+        </p>
+      )}
       {error && (
         <p className="picker-problem" role="alert">
           {error}

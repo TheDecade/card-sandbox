@@ -30,6 +30,14 @@ export function createRepositories(db: SandboxDB = defaultDb) {
       await db.cards.bulkPut(cards);
     },
 
+    /** Replaces the whole Main Card List in one transaction (all or nothing). */
+    async replaceCards(cards: CardDefinition[]): Promise<void> {
+      await db.transaction('rw', db.cards, async () => {
+        await db.cards.clear();
+        await db.cards.bulkPut(cards);
+      });
+    },
+
     /** Image metadata only; the pixel blobs stay on disk until displayed. */
     async loadImageMeta(): Promise<ImageMeta[]> {
       const metas: ImageMeta[] = [];

@@ -28,10 +28,15 @@
   font-weight: 700;
   line-height: 1.1;
 }
+/* Names wrap onto a second line, then shrink (--fit) if they still don't fit. */
 .card-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  line-height: 1.05;
+  font-size: calc(1em * var(--fit, 1));
 }
 .card-cost {
   flex: none;
@@ -54,8 +59,13 @@
 
 .card-text {
   flex: 1;
-  overflow: hidden;
-  font-size: 7.2cqw;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto; /* last resort for very long texts (readable in the enlarged view) */
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  white-space: pre-line; /* keep the line breaks of the card text */
+  font-size: calc(7.2cqw * var(--fit, 1)); /* --fit: shrink-to-fit factor set by useFitText */
   line-height: 1.25;
   color: #333;
 }

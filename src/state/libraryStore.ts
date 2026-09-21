@@ -19,6 +19,10 @@ export interface LibraryState {
   setEnabled(id: CardId, enabled: boolean): Promise<void>;
   addImages(images: ImageAsset[]): Promise<void>;
   addSampleCards(): Promise<void>;
+  /** Adds imported cards after the existing ones. */
+  addCards(cards: CardDefinition[]): Promise<void>;
+  /** Replaces every card with the given ones (images are kept). */
+  replaceCards(cards: CardDefinition[]): Promise<void>;
   updateSettings(patch: Partial<Settings>): Promise<void>;
   getCard(id: CardId): CardDefinition | undefined;
 }
@@ -74,6 +78,16 @@ export function createLibraryStore(repos: Repositories) {
       const cards = sampleCards().map((c, i) => ({ ...newCardDefinition(now + i), ...c }));
       await repos.saveCards(cards);
       set((s) => ({ cards: [...s.cards, ...cards] }));
+    },
+
+    async addCards(cards) {
+      await repos.saveCards(cards);
+      set((s) => ({ cards: [...s.cards, ...cards] }));
+    },
+
+    async replaceCards(cards) {
+      await repos.replaceCards(cards);
+      set({ cards });
     },
 
     async updateSettings(patch) {

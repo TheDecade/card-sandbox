@@ -1,5 +1,7 @@
+import { useRef } from 'react';
 import './card.css';
 import { CostView } from './CostView';
+import { useFitText } from './useFitText';
 
 // Display-only card. Its size comes from the parent's width; all text scales with it.
 
@@ -15,18 +17,33 @@ export interface CardContent {
 
 export function CardView({ card, faceUp = true }: { card?: CardContent; faceUp?: boolean }) {
   if (!faceUp || !card) {
-    return (
-      <div className="card card-back" aria-label="Face-down card">
-        <div className="card-back-emblem" />
-      </div>
-    );
+    return <CardBack />;
   }
+  return <CardFace card={card} />;
+}
+
+function CardBack() {
+  return (
+    <div className="card card-back" aria-label="Face-down card">
+      <div className="card-back-emblem" />
+    </div>
+  );
+}
+
+function CardFace({ card }: { card: CardContent }) {
+  const nameRef = useRef<HTMLSpanElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
+  // Long names and texts shrink to fit; text that still doesn't fit can be scrolled.
+  useFitText(nameRef, `${card.name}|${card.cost}`, { min: 0.7, maxLines: 2 });
+  useFitText(textRef, card.description, { min: 0.5 });
   const hue = card.artHue ?? 150;
   return (
     <div className="card" aria-label={card.name}>
       <div className="card-face">
         <div className="card-head">
-          <span className="card-name">{card.name}</span>
+          <span ref={nameRef} className="card-name">
+            {card.name}
+          </span>
           <CostView cost={card.cost} className="card-cost-pips" />
         </div>
         <div
@@ -57,7 +74,9 @@ export function CardView({ card, faceUp = true }: { card?: CardContent; faceUp?:
           )}
         </div>
         {card.type ? <div className="card-type">{card.type}</div> : null}
-        <div className="card-text">{card.description}</div>
+        <div ref={textRef} className="card-text">
+          {card.description}
+        </div>
       </div>
     </div>
   );

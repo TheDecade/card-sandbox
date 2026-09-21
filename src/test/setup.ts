@@ -14,8 +14,8 @@ vi.mock('virtual:pwa-register/react', () => ({
   }),
 }));
 
-// jsdom has no matchMedia.
-window.matchMedia ??= ((query: string) => ({
+// jsdom has no matchMedia. (Some test files run in plain Node, without window.)
+if (typeof window !== 'undefined') window.matchMedia ??= ((query: string) => ({
   matches: false,
   media: query,
   onchange: null,

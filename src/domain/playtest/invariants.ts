@@ -35,7 +35,6 @@ export function checkInvariants(state: PlaytestState): string[] {
     if (inst.faceUp !== rule.faceUp) errors.push(`${id} face state wrong for ${inst.zone}`);
     if (inst.tapped && !rule.keepsTapped) errors.push(`${id} tapped in ${inst.zone}`);
     for (const [color, n] of Object.entries(inst.counters)) {
-      if (!rule.keepsCounters) errors.push(`${id} has counters in ${inst.zone}`);
       if (!Number.isInteger(n) || (n ?? 0) <= 0) errors.push(`${id} has invalid ${color} count ${n}`);
     }
   }

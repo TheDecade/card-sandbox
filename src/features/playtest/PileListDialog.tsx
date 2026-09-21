@@ -4,7 +4,7 @@ import type { ZoneTarget } from '../../domain/playtest/commands';
 import type { InstanceId } from '../../domain/playtest/types';
 import type { VisibleCard } from '../../domain/playtest/visibility';
 import { Modal } from '../../ui/Modal';
-import { counterBadges, VisibleCardView } from './PlayCard';
+import { CounterChip, counterBadges, VisibleCardView } from './PlayCard';
 import { PILE_LABEL, type Pile } from './Zones';
 
 /** List of the cards in the Graveyard or Exile, newest first, each with a Move to… menu. */
@@ -61,12 +61,7 @@ export function PileListDialog({
                       <span className="row-cost">{card.def.cost}</span>
                     )}
                     {card.kind === 'revealed' &&
-                      counterBadges(card.counters)?.map((b) => (
-                        <span key={b.id} className="counter-chip">
-                          <span className="counter-dot" style={{ background: b.hex }} />
-                          {b.count}
-                        </span>
-                      ))}
+                      counterBadges(card.counters).map((b) => <CounterChip key={b.id} badge={b} />)}
                   </button>
                   <button className="btn" onClick={() => setMoving(card.instanceId)}>
                     Move to…

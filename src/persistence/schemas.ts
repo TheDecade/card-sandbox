@@ -17,6 +17,7 @@ export const cardDefinitionSchema = z.object({
 export const settingsSchema = z.object({
   schemaVersion: z.number().int(),
   playerCount: z.number().int().min(MIN_PLAYERS).max(MAX_PLAYERS),
+  countersPersist: z.boolean(),
   lastBackupAt: z.number().nullable(),
 });
 
@@ -35,6 +36,7 @@ export const playtestSchema = z.object({
   schemaVersion: z.number().int(),
   id: z.string(),
   createdAt: z.number(),
+  rules: z.object({ countersPersist: z.boolean().optional() }).optional(), // added in v2
   players: z
     .array(
       z.object({

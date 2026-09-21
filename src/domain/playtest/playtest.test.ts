@@ -30,8 +30,8 @@ function idMaker() {
 }
 const noShuffle = () => 0; // Fisher–Yates with j=0 is deterministic
 
-function fresh(players = 2): PlaytestState {
-  return createPlaytest(players, CARDS, { makeId: idMaker(), rand: noShuffle });
+function fresh(players = 2, countersPersist = true): PlaytestState {
+  return createPlaytest(players, CARDS, { makeId: idMaker(), rand: noShuffle, rules: { countersPersist } });
 }
 const run = (s: PlaytestState, ...cmds: PlaytestCommand[]) => cmds.reduce(applyCommand, s);
 const deckOf = (s: PlaytestState, p = 0) => s.players[p]!.zones.deck;
@@ -77,7 +77,7 @@ describe('moveCard', () => {
     expect(s.players[0]!.zones.canvas).toEqual([top]);
   });
 
-  it('puts a card on top or bottom of the deck face-down, dropping tapped and counters', () => {
+  it('puts a card on top or bottom of the deck face-down and untapped', () => {
     const s0 = fresh();
     const [a, b] = deckOf(s0);
     const s1 = run(
@@ -88,7 +88,9 @@ describe('moveCard', () => {
       { type: 'moveCard', instanceId: a!, to: { zone: 'deck', placement: 'bottom' } },
     );
     expect(deckOf(s1).at(-1)).toBe(a);
-    expect(s1.instances[a!]).toMatchObject({ faceUp: false, tapped: false, counters: {}, position: null });
+    expect(s1.instances[a!]).toMatchObject({ faceUp: false, tapped: false, counters: { red: 3 }, position: null });
+    // Hidden while in the deck: the counters can't be changed there.
+    expect(run(s1, { type: 'changeCounters', instanceId: a!, color: 'red', delta: 1 })).toBe(s1);
     const s2 = run(s1, { type: 'moveCard', instanceId: b!, to: { zone: 'deck', placement: 'top' } });
     expect(deckOf(s2)[0]).toBe(b);
     expect(checkInvariants(s2)).toEqual([]);
@@ -121,6 +123,51 @@ describe('moveCard', () => {
   it('ignores unknown instances', () => {
     const s0 = fresh();
     expect(run(s0, { type: 'moveCard', instanceId: 'nope', to: { zone: 'hand' } })).toBe(s0);
+  });
+});
+
+describe('counter persistence rule', () => {
+  const withCounters = (persist: boolean) => {
+    const s0 = fresh(2, persist);
+    const [a, b] = deckOf(s0);
+    const s = run(
+      s0,
+      { type: 'moveCard', instanceId: a!, to: { zone: 'canvas', position: { x: 0.5, y: 0.5 } } },
+      { type: 'moveCard', instanceId: b!, to: { zone: 'hand' } },
+      { type: 'changeCounters', instanceId: a!, color: 'red', delta: 2 },
+      { type: 'changeCounters', instanceId: a!, color: 'p2', delta: 1 }, // player counter
+      { type: 'changeCounters', instanceId: b!, color: 'blue', delta: 1 },
+    );
+    return { s, a: a!, b: b! };
+  };
+
+  it('on: counters follow the card through every zone, including the deck', () => {
+    const { s, a } = withCounters(true);
+    const moved = run(
+      s,
+      { type: 'moveCard', instanceId: a, to: { zone: 'graveyard' } },
+      { type: 'moveCard', instanceId: a, to: { zone: 'deck', placement: 'top' } },
+      { type: 'moveCard', instanceId: a, to: { zone: 'hand' } },
+    );
+    expect(moved.instances[a]!.counters).toEqual({ red: 2, p2: 1 });
+  });
+
+  it('off: counters are removed when the card changes zone, not when it moves within one', () => {
+    const { s, a, b } = withCounters(false);
+    const onTable = run(s, { type: 'moveOnCanvas', instanceId: a, position: { x: 0.1, y: 0.1 } });
+    expect(onTable.instances[a]!.counters).toEqual({ red: 2, p2: 1 });
+    const reordered = run(s, { type: 'moveCard', instanceId: b, to: { zone: 'hand', index: 0 } });
+    expect(reordered.instances[b]!.counters).toEqual({ blue: 1 });
+    const toHand = run(s, { type: 'moveCard', instanceId: a, to: { zone: 'hand' } });
+    expect(toHand.instances[a]!.counters).toEqual({});
+  });
+
+  it('can be switched during a playtest', () => {
+    const { s, a } = withCounters(true);
+    const off = run(s, { type: 'setRules', rules: { countersPersist: false } });
+    expect(off.rules.countersPersist).toBe(false);
+    expect(off.instances[a]!.counters).toEqual({ red: 2, p2: 1 }); // existing counters untouched
+    expect(run(off, { type: 'moveCard', instanceId: a, to: { zone: 'exile' } }).instances[a]!.counters).toEqual({});
   });
 });
 
@@ -258,6 +305,7 @@ describe('fuzz: random command sequences keep the state consistent', () => {
     fc.record({ t: fc.constant('shuffle' as const), p: fc.nat(2) }),
     fc.record({ t: fc.constant('players' as const), n: fc.integer({ min: 1, max: 4 }) }),
     fc.record({ t: fc.constant('select' as const), p: fc.nat(4) }),
+    fc.record({ t: fc.constant('rules' as const), on: fc.boolean() }),
   );
 
   it('holds all invariants and never loses or duplicates a card', () => {
@@ -277,6 +325,7 @@ describe('fuzz: random command sequences keep the state consistent', () => {
             case 'shuffle': cmds = s.players[step.p] ? [shuffleDeckCommand(s, step.p)] : []; break;
             case 'players': cmds = playerCountCommands(s, step.n, CARDS, { makeId }); break;
             case 'select': cmds = [{ type: 'selectPlayer', playerId: step.p }]; break;
+            case 'rules': cmds = [{ type: 'setRules', rules: { countersPersist: step.on } }]; break;
           }
           s = run(s, ...cmds);
           expect(checkInvariants(s)).toEqual([]);

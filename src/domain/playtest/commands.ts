@@ -1,5 +1,5 @@
 import type { CounterColorId } from '../counters/colors';
-import type { CardInstance, InstanceId, PlayerId, PlayerState, Vec2 } from './types';
+import type { CardInstance, InstanceId, PlayerId, PlayerState, PlaytestRules, Vec2 } from './types';
 
 export type ZoneTarget =
   | { zone: 'canvas'; position: Vec2 }
@@ -20,4 +20,5 @@ export type PlaytestCommand =
   | { type: 'setDeckOrder'; playerId: PlayerId; order: InstanceId[] }
   | { type: 'selectPlayer'; playerId: PlayerId }
   | { type: 'addPlayers'; players: PlayerState[]; instances: CardInstance[] }
-  | { type: 'removePlayersFrom'; playerId: PlayerId };
+  | { type: 'removePlayersFrom'; playerId: PlayerId }
+  | { type: 'setRules'; rules: Partial<PlaytestRules> };

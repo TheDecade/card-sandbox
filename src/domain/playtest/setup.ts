@@ -3,8 +3,10 @@ import { randomInt, shuffled, type RandomInt } from '../../lib/random';
 import type { CardDefinition } from '../cards/types';
 import type { PlaytestCommand } from './commands';
 import {
+  DEFAULT_RULES,
   emptyZones,
   PLAYTEST_SCHEMA_VERSION,
+  type PlaytestRules,
   type CardInstance,
   type PlayerId,
   type PlayerState,
@@ -14,6 +16,7 @@ import {
 export interface SetupDeps {
   rand?: RandomInt;
   makeId?: () => string;
+  rules?: PlaytestRules;
 }
 
 /** A player with one face-down copy of every enabled card, independently shuffled. */
@@ -53,6 +56,7 @@ export function createPlaytest(
     schemaVersion: PLAYTEST_SCHEMA_VERSION,
     id: (deps.makeId ?? newId)(),
     createdAt: Date.now(),
+    rules: { ...(deps.rules ?? DEFAULT_RULES) },
     players: created.map((c) => c.player),
     instances: Object.fromEntries(created.flatMap((c) => c.instances).map((i) => [i.id, i])),
     currentPlayer: 0,

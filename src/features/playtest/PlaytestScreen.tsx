@@ -20,10 +20,14 @@ import './table.css';
 type DropTarget = 'canvas' | 'hand' | 'deck' | Pile;
 type DragSource = { kind: 'deck'; instanceId: InstanceId } | { kind: 'card'; instanceId: InstanceId };
 interface Drag {
+  id: number; // new ghost element per drag, so a finishing snap-back never affects the next drag
   source: DragSource;
   point: Point;
   offset: Point; // finger → card centre
 }
+
+let dragCounter = 0;
+const SNAP_BACK_MS = 180;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const ghostTransform = (p: Point, tapped: boolean) =>
@@ -35,7 +39,7 @@ export function PlaytestScreen({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     if (!state) {
       const { cards, settings } = useLibrary.getState();
-      usePlaytest.getState().ensureStarted(cards, settings.playerCount);
+      usePlaytest.getState().ensureStarted(cards, settings);
     }
   }, [state]);
   return state ? <Table state={state} onBack={onBack} /> : null;
@@ -81,7 +85,7 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
 
   // ---------- dragging ----------
   function beginDrag(source: DragSource, start: Point, offset: Point) {
-    dragRef.current = { source, point: start, offset };
+    dragRef.current = { id: ++dragCounter, source, point: start, offset };
     setDrag(dragRef.current);
   }
 
@@ -94,22 +98,49 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
     setDropHover(hitTestDropZone(p));
   }
 
-  function cancelDrag() {
+  function finishDrag() {
     dragRef.current = null;
     setDropHover(null);
     setDrag(null);
   }
 
+  /** The card slides back to where it was picked up, then the original reappears. */
+  function snapBack() {
+    const d = dragRef.current;
+    dragRef.current = null;
+    setDropHover(null);
+    if (!d) return;
+    const ghost = ghostRef.current;
+    const origin =
+      d.source.kind === 'deck'
+        ? deckEl.current
+        : document.querySelector<HTMLElement>(`[data-card-id="${d.source.instanceId}"]`);
+    if (!ghost || !origin) {
+      setDrag(null);
+      return;
+    }
+    const r = origin.getBoundingClientRect();
+    ghost.style.transition = `transform ${SNAP_BACK_MS}ms ease-out`;
+    ghost.style.transform = ghostTransform(
+      { x: r.left + r.width / 2, y: r.top + r.height / 2 },
+      d.source.kind === 'card' && isTapped(d.source.instanceId),
+    ).replace('scale(1.06)', 'scale(1)');
+    setTimeout(() => setDrag((cur) => (cur?.id === d.id ? null : cur)), SNAP_BACK_MS);
+  }
+
   function endDrag(p: Point) {
     const d = dragRef.current;
     if (!d) return;
-    cancelDrag();
     const target = hitTestDropZone(p) as DropTarget | null;
     const id = d.source.instanceId;
     const inst = state.instances[id];
-    if (!target || !inst) return; // dropped outside: the card stays where it was
+    // Dropped outside any zone, or put back on the deck it came from: return it.
+    if (!target || !inst || (target === 'deck' && d.source.kind === 'deck')) {
+      snapBack();
+      return;
+    }
+    finishDrag();
     if (target === 'deck') {
-      if (d.source.kind === 'deck') return; // picked up from the deck and put back
       setDeckDrop(id); // ask: top or bottom?
       return;
     }
@@ -162,7 +193,7 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
     onDragStart: (start, offset) => beginDrag({ kind: 'card', instanceId: id }, start, offset),
     onDragMove: moveDrag,
     onDragEnd: endDrag,
-    onDragCancel: cancelDrag,
+    onDragCancel: snapBack,
   });
 
   // ---------- hand layout: overlap cards up to 40%, then scroll sideways ----------
@@ -256,7 +287,7 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
             }}
             onDragMove={moveDrag}
             onDragEnd={endDrag}
-            onDragCancel={cancelDrag}
+            onDragCancel={snapBack}
           />
         </div>
       </div>
@@ -303,6 +334,7 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
 
       {drag && ghostPoint && (
         <div
+          key={drag.id}
           ref={ghostRef}
           className="drag-ghost"
           style={{
@@ -339,7 +371,9 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
           onClose={() => setOpenPile(null)}
         />
       )}
-      {counterFor && <CounterDialog card={view(counterFor)} onClose={() => setCounterFor(null)} />}
+      {counterFor && (
+        <CounterDialog card={view(counterFor)} playerCount={playerCount} onClose={() => setCounterFor(null)} />
+      )}
 
       {magnifiedCard && magnifiedCard.kind !== 'hidden' && (
         <Modal className="scrim magnify-scrim" onClose={() => setMagnified(null)}>
@@ -455,7 +489,7 @@ export function ResetPlaytestDialog({ onDone }: { onDone: (didReset: boolean) =>
       danger
       onConfirm={() => {
         const { cards, settings } = useLibrary.getState();
-        usePlaytest.getState().reset(cards, settings.playerCount);
+        usePlaytest.getState().reset(cards, settings);
         onDone(true);
       }}
       onCancel={() => onDone(false)}

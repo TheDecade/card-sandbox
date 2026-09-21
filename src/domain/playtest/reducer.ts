@@ -34,7 +34,7 @@ export function applyCommand(state: PlaytestState, cmd: PlaytestCommand): Playte
 
       case 'changeCounters': {
         const inst = draft.instances[cmd.instanceId];
-        if (!inst || !ZONE_RULES[inst.zone].keepsCounters) return;
+        if (!inst || !inst.faceUp) return; // face-down cards can't be handled
         const next = Math.max(0, (inst.counters[cmd.color] ?? 0) + Math.trunc(cmd.delta));
         if (next === 0) delete inst.counters[cmd.color];
         else inst.counters[cmd.color] = next;
@@ -66,6 +66,10 @@ export function applyCommand(state: PlaytestState, cmd: PlaytestCommand): Playte
         if (draft.currentPlayer >= draft.players.length) draft.currentPlayer = 0;
         break;
       }
+
+      case 'setRules':
+        draft.rules = { ...draft.rules, ...cmd.rules };
+        break;
     }
   });
 }
@@ -74,6 +78,8 @@ function moveCard(draft: Draft<PlaytestState>, id: InstanceId, to: ZoneTarget): 
   const inst = draft.instances[id];
   const player = inst && draft.players[inst.ownerId];
   if (!inst || !player) return;
+
+  const zoneChanged = inst.zone !== to.zone;
 
   // 1. Remove from the current zone.
   const from = player.zones[inst.zone];
@@ -97,7 +103,7 @@ function moveCard(draft: Draft<PlaytestState>, id: InstanceId, to: ZoneTarget): 
   inst.faceUp = rule.faceUp;
   inst.position = to.zone === 'canvas' ? clampPos(to.position) : null;
   if (!rule.keepsTapped) inst.tapped = false;
-  if (!rule.keepsCounters) inst.counters = {};
+  if (zoneChanged && !draft.rules.countersPersist) inst.counters = {};
 }
 
 function bringToFront(draft: Draft<PlaytestState>, id: InstanceId): void {

@@ -1,7 +1,7 @@
 import type { CardId } from '../cards/types';
 import type { CounterColorId } from '../counters/colors';
 
-export const PLAYTEST_SCHEMA_VERSION = 1;
+export const PLAYTEST_SCHEMA_VERSION = 2; // 2: added rules
 
 export type InstanceId = string;
 export type PlayerId = number; // 0-based index; shown as "Player N+1"
@@ -33,10 +33,19 @@ export interface PlayerState {
   zones: Record<ZoneId, InstanceId[]>;
 }
 
+/** Table rules that can change while a playtest runs. */
+export interface PlaytestRules {
+  /** On: counters stay on a card whatever zone it moves to. Off: removed when it changes zone. */
+  countersPersist: boolean;
+}
+
+export const DEFAULT_RULES: PlaytestRules = { countersPersist: true };
+
 export interface PlaytestState {
   schemaVersion: number;
   id: string;
   createdAt: number;
+  rules: PlaytestRules;
   players: PlayerState[];
   instances: Record<InstanceId, CardInstance>;
   currentPlayer: PlayerId;

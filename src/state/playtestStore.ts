@@ -1,6 +1,7 @@
 // The running playtest. Changes go through dispatch (the pure reducer); autosave writes them out.
 import { create } from 'zustand';
 import type { CardDefinition } from '../domain/cards/types';
+import type { Settings } from '../domain/settings/types';
 import type { PlaytestCommand } from '../domain/playtest/commands';
 import { applyCommand } from '../domain/playtest/reducer';
 import { repairPlaytest } from '../domain/playtest/repair';
@@ -18,13 +19,17 @@ export interface PlaytestStoreState {
 
   load(): Promise<void>;
   /** Starts a playtest if there is none yet. */
-  ensureStarted(cards: readonly CardDefinition[], playerCount: number): void;
-  reset(cards: readonly CardDefinition[], playerCount: number): void;
+  ensureStarted(cards: readonly CardDefinition[], settings: TableSettings): void;
+  reset(cards: readonly CardDefinition[], settings: TableSettings): void;
   dispatch(cmd: PlaytestCommand): void;
   shuffleDeck(playerId: PlayerId): void;
   /** Adds players with fresh decks, or removes the highest-numbered ones. */
   setPlayerCount(count: number, cards: readonly CardDefinition[]): void;
 }
+
+type TableSettings = Pick<Settings, 'playerCount' | 'countersPersist'>;
+const newPlaytest = (cards: readonly CardDefinition[], s: TableSettings) =>
+  createPlaytest(s.playerCount, cards, { rules: { countersPersist: s.countersPersist } });
 
 export function createPlaytestStore(repos: Repositories) {
   return create<PlaytestStoreState>()((set, get) => ({
@@ -57,12 +62,12 @@ export function createPlaytestStore(repos: Repositories) {
       }
     },
 
-    ensureStarted(cards, playerCount) {
-      if (!get().state) set({ state: createPlaytest(playerCount, cards) });
+    ensureStarted(cards, settings) {
+      if (!get().state) set({ state: newPlaytest(cards, settings) });
     },
 
-    reset(cards, playerCount) {
-      set({ state: createPlaytest(playerCount, cards) });
+    reset(cards, settings) {
+      set({ state: newPlaytest(cards, settings) });
     },
 
     dispatch(cmd) {

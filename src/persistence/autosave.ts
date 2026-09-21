@@ -2,6 +2,13 @@ import type { PlaytestState } from '../domain/playtest/types';
 import type { PlaytestStore } from '../state/playtestStore';
 import type { Repositories } from './repositories';
 
+let active: { flush(): Promise<void> } | null = null;
+
+/** Writes any pending playtest change now (e.g. before a backup replaces the database). */
+export async function flushPlaytestAutosave(): Promise<void> {
+  await active?.flush();
+}
+
 /**
  * Saves the playtest shortly after every change, and immediately when the app goes to the
  * background: iPadOS may kill a backgrounded web app without warning.
@@ -37,13 +44,16 @@ export function startPlaytestAutosave(store: PlaytestStore, repos: Repositories,
   document.addEventListener('visibilitychange', onVisibility);
   window.addEventListener('pagehide', onPageHide);
 
-  return {
+  const handle = {
     flush,
     stop() {
+      if (active === handle) active = null;
       unsubscribe();
       clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pagehide', onPageHide);
     },
   };
+  active = handle;
+  return handle;
 }

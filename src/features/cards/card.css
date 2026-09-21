@@ -110,3 +110,27 @@
 .card-counters {
   z-index: 1;
 }
+
+.card-counters {
+  flex-wrap: wrap;
+  right: 3cqw;
+}
+.counter-player {
+  position: relative;
+  font-size: 7.5cqw;
+}
+.counter-count {
+  position: absolute;
+  top: -4cqw;
+  right: -4cqw;
+  min-width: 9cqw;
+  height: 9cqw;
+  padding: 0 1.5cqw;
+  display: grid;
+  place-items: center;
+  border-radius: 5cqw;
+  background: #c9a54a;
+  color: #1d1d1b;
+  font-size: 6cqw;
+  font-weight: 800;
+}

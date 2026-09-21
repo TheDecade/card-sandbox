@@ -4,6 +4,8 @@ import { MAX_PLAYERS, MIN_PLAYERS } from '../../domain/settings/types';
 import { useLibrary } from '../../state/libraryStore';
 import { usePlaytest } from '../../state/playtestStore';
 import { ConfirmDialog } from '../../ui/Modal';
+import { Toggle } from '../../ui/Toggle';
+import { BackupSection } from './BackupSection';
 
 export function OptionsScreen({
   storage,
@@ -15,6 +17,7 @@ export function OptionsScreen({
   onBack: () => void;
 }) {
   const playerCount = useLibrary((s) => s.settings.playerCount);
+  const countersPersist = useLibrary((s) => s.settings.countersPersist);
   const playtestPlayers = usePlaytest((s) => s.state?.players.length ?? null);
   const [confirmRemove, setConfirmRemove] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +26,15 @@ export function OptionsScreen({
     try {
       await useLibrary.getState().updateSettings({ playerCount: count });
       usePlaytest.getState().setPlayerCount(count, useLibrary.getState().cards);
+    } catch (e) {
+      setError(`Could not save: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  async function setCountersPersist(on: boolean) {
+    try {
+      await useLibrary.getState().updateSettings({ countersPersist: on });
+      usePlaytest.getState().dispatch({ type: 'setRules', rules: { countersPersist: on } });
     } catch (e) {
       setError(`Could not save: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -78,6 +90,25 @@ export function OptionsScreen({
         </p>
         {error && <p className="picker-problem">{error}</p>}
       </section>
+
+      <section className="panel">
+        <h3>Counters</h3>
+        <div className="option-row">
+          <span>Keep counters when a card changes zone</span>
+          <Toggle
+            checked={countersPersist}
+            label="Keep counters when a card changes zone"
+            onChange={(on) => void setCountersPersist(on)}
+          />
+        </div>
+        <p className="muted panel-note">
+          {countersPersist
+            ? 'On: counters stay on a card wherever it goes — hand, table, graveyard, exile, even the deck.'
+            : 'Off: a card loses its counters when it moves to another zone. Moving it around the table or within the hand keeps them.'}
+        </p>
+      </section>
+
+      <BackupSection />
 
       <section className="panel">
         <h3>About</h3>

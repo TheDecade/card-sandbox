@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CardEditScreen } from '../features/cardEdit/CardEditScreen';
+import { lastBackupText } from '../features/options/BackupSection';
 import { OptionsScreen } from '../features/options/OptionsScreen';
 import { PlaytestScreen, ResetPlaytestDialog } from '../features/playtest/PlaytestScreen';
 import { startPlaytestAutosave } from '../persistence/autosave';
@@ -86,7 +87,13 @@ export function App() {
   );
 }
 
+const BACKUP_REMINDER_DAYS = 14;
+
 function MainMenu({ onOpen, onReset }: { onOpen: (s: Screen) => void; onReset: () => void }) {
+  const lastBackupAt = useLibrary((s) => s.settings.lastBackupAt);
+  const hasCards = useLibrary((s) => s.cards.length > 0);
+  const overdue =
+    hasCards && (lastBackupAt === null || Date.now() - lastBackupAt > BACKUP_REMINDER_DAYS * 86_400_000);
   return (
     <main className="menu">
       <h1 className="menu-title">Card Sandbox</h1>
@@ -104,6 +111,12 @@ function MainMenu({ onOpen, onReset }: { onOpen: (s: Screen) => void; onReset: (
           Reset Playtest
         </button>
       </nav>
+      {hasCards && (
+        <button className={`backup-reminder${overdue ? ' is-warning' : ''}`} onClick={() => onOpen('options')}>
+          Last backup: {lastBackupText(lastBackupAt)}
+          {overdue && ' · back up now'}
+        </button>
+      )}
       <p className="version">
         v{__APP_VERSION__} · {__BUILD_HASH__}
       </p>

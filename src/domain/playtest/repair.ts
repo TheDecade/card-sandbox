@@ -8,10 +8,8 @@ function normalize(inst: CardInstance, ownerId: number, zone: ZoneId): CardInsta
   const rule = ZONE_RULES[zone];
   const pos: Vec2 = inst.position ?? { x: 0.5, y: 0.5 };
   const counters: CardInstance['counters'] = {};
-  if (rule.keepsCounters) {
-    for (const [color, n] of Object.entries(inst.counters)) {
-      if (Number.isInteger(n) && (n ?? 0) > 0) counters[color] = n;
-    }
+  for (const [color, n] of Object.entries(inst.counters)) {
+    if (Number.isInteger(n) && (n ?? 0) > 0) counters[color] = n;
   }
   return {
     ...inst,

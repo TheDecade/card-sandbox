@@ -1,24 +1,37 @@
 import { useState } from 'react';
 import { displayName } from '../../domain/cards/types';
-import { COUNTER_COLORS, type CounterColorId } from '../../domain/counters/colors';
+import { COUNTER_COLORS, playerCounterTypes, type CounterColorId } from '../../domain/counters/colors';
 import type { InstanceId } from '../../domain/playtest/types';
 import type { VisibleCard } from '../../domain/playtest/visibility';
 import { usePlaytest } from '../../state/playtestStore';
 import { Modal } from '../../ui/Modal';
-import { counterBadges } from './PlayCard';
+import { CounterChip, counterBadges } from './PlayCard';
 
 const MAX_AMOUNT = 99;
 let lastColor: CounterColorId = COUNTER_COLORS[0]!.id; // remembered while the app is open
 
-/** Long-press dialog: add or remove colored counters on one card instance. */
-export function CounterDialog({ card, onClose }: { card: VisibleCard; onClose: () => void }) {
+/** Long-press dialog: add or remove counters (colors, or player counters p1…pN) on one card instance. */
+export function CounterDialog({
+  card,
+  playerCount,
+  onClose,
+}: {
+  card: VisibleCard;
+  playerCount: number; // player counters p1…pN
+  onClose: () => void;
+}) {
   const dispatch = usePlaytest((s) => s.dispatch);
   const [amount, setAmount] = useState(1);
-  const [color, setColor] = useState<CounterColorId>(lastColor);
+  const playerTypes = playerCounterTypes(playerCount);
+  const [color, setColor] = useState<CounterColorId>(() =>
+    COUNTER_COLORS.some((c) => c.id === lastColor) || playerTypes.some((p) => p.id === lastColor)
+      ? lastColor
+      : COUNTER_COLORS[0]!.id,
+  );
   if (card.kind !== 'revealed') return null;
 
   const current = card.counters[color] ?? 0;
-  const badges = counterBadges(card.counters) ?? [];
+  const badges = counterBadges(card.counters);
   const change = (instanceId: InstanceId, delta: number) => {
     lastColor = color;
     dispatch({ type: 'changeCounters', instanceId, color, delta });
@@ -33,12 +46,7 @@ export function CounterDialog({ card, onClose }: { card: VisibleCard; onClose: (
           {badges.length === 0 ? (
             <span className="muted">No counters on this card.</span>
           ) : (
-            badges.map((b) => (
-              <span key={b.id} className="counter-chip">
-                <span className="counter-dot" style={{ background: b.hex }} />
-                {b.count}
-              </span>
-            ))
+            badges.map((b) => <CounterChip key={b.id} badge={b} />)
           )}
         </div>
 
@@ -65,18 +73,20 @@ export function CounterDialog({ card, onClose }: { card: VisibleCard; onClose: (
           </button>
         </div>
 
-        <div className="field-label">Color</div>
-        <div className="swatches" role="radiogroup" aria-label="Counter color">
-          {COUNTER_COLORS.map((c) => (
+        <div className="field-label">Counter</div>
+        <div className="swatches" role="radiogroup" aria-label="Counter type">
+          {[...COUNTER_COLORS, ...playerTypes].map((c) => (
             <button
               key={c.id}
               role="radio"
               aria-checked={color === c.id}
-              aria-label={c.label}
-              className={`swatch${color === c.id ? ' is-selected' : ''}`}
+              aria-label={c.kind === 'player' ? `Player counter ${c.label}` : c.label}
+              className={`swatch${c.kind === 'player' ? ' swatch-player' : ''}${color === c.id ? ' is-selected' : ''}`}
               style={{ background: c.hex }}
               onClick={() => setColor(c.id)}
-            />
+            >
+              {c.kind === 'player' ? c.label : null}
+            </button>
           ))}
         </div>
 

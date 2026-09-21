@@ -222,3 +222,40 @@ textarea {
   margin: 12px 0 0;
   line-height: 1.45;
 }
+.option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-weight: 600;
+}
+.backup-note {
+  margin: 0 0 12px;
+}
+.backup-last {
+  margin: 0 0 14px;
+}
+.backup-last.is-warning b,
+.backup-reminder.is-warning {
+  color: var(--accent);
+}
+.backup-actions,
+.backup-ready {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.backup-ready span {
+  font-weight: 600;
+  margin-right: auto;
+}
+.backup-reminder {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.95rem;
+}

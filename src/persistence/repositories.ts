@@ -4,6 +4,7 @@ import type { ImageAsset, ImageMeta, ImageVariant } from '../domain/images/types
 import type { PlaytestState } from '../domain/playtest/types';
 import type { Settings } from '../domain/settings/types';
 import { db as defaultDb, type SandboxDB } from './db';
+import { migratePlaytest } from './migrations';
 import { cardDefinitionSchema, parseSettings, playtestSchema } from './schemas';
 
 export function createRepositories(db: SandboxDB = defaultDb) {
@@ -64,7 +65,7 @@ export function createRepositories(db: SandboxDB = defaultDb) {
         console.warn('Saved playtest is unreadable', parsed.error);
         return { state: null, unreadable: true };
       }
-      return { state: parsed.data, unreadable: false };
+      return { state: migratePlaytest(parsed.data), unreadable: false };
     },
 
     async savePlaytest(state: PlaytestState): Promise<void> {

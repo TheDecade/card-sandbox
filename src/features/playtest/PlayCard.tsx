@@ -1,5 +1,5 @@
 import { useRef, useState, type CSSProperties } from 'react';
-import { COUNTER_COLORS } from '../../domain/counters/colors';
+import { counterSortKey, counterType } from '../../domain/counters/colors';
 import type { CardInstance } from '../../domain/playtest/types';
 import type { VisibleCard } from '../../domain/playtest/visibility';
 import type { ImageVariant } from '../../domain/images/types';
@@ -8,12 +8,31 @@ import { useGestures } from '../../gestures/useGestures';
 import { CardView, type CardContent } from '../cards/CardView';
 import { DefinitionCard } from '../cards/DefinitionCard';
 
-/** Counters in registry order, for display. Unknown colors are skipped. */
-export function counterBadges(counters: CardInstance['counters']): CardContent['counters'] {
-  return COUNTER_COLORS.flatMap((c) => {
-    const count = counters[c.id] ?? 0;
-    return count > 0 ? [{ id: c.id, hex: c.hex, count }] : [];
-  });
+/** Counters for display: colors first, then player counters (which carry a label). */
+export function counterBadges(counters: CardInstance['counters']): NonNullable<CardContent['counters']> {
+  return Object.entries(counters)
+    .flatMap(([id, count]) => {
+      const type = counterType(id);
+      if (!type || !count || count <= 0) return [];
+      return [{ id, hex: type.hex, count, label: type.kind === 'player' ? type.label : undefined }];
+    })
+    .sort((a, b) => counterSortKey(a.id) - counterSortKey(b.id));
+}
+
+/** Compact "● 3" / "p2 3" chip for lists and dialogs. */
+export function CounterChip({ badge }: { badge: ReturnType<typeof counterBadges>[number] }) {
+  return (
+    <span className="counter-chip">
+      {badge.label ? (
+        <span className="counter-dot counter-dot-player" style={{ background: badge.hex }}>
+          {badge.label}
+        </span>
+      ) : (
+        <span className="counter-dot" style={{ background: badge.hex }} />
+      )}
+      {badge.count}
+    </span>
+  );
 }
 
 /** Renders what the player may see of a card: its back, or its face with counters. */

@@ -8,7 +8,7 @@ export interface CardContent {
   description: string;
   imageUrl?: string | null;
   artHue?: number; // placeholder art color when there is no image
-  counters?: { id: string; hex: string; count: number }[];
+  counters?: { id: string; hex: string; count: number; label?: string }[];
 }
 
 export function CardView({ card, faceUp = true }: { card?: CardContent; faceUp?: boolean }) {
@@ -38,11 +38,19 @@ export function CardView({ card, faceUp = true }: { card?: CardContent; faceUp?:
           {card.imageUrl && <img src={card.imageUrl} alt="" draggable={false} />}
           {card.counters && card.counters.length > 0 && (
             <div className="card-counters">
-              {card.counters.map((c) => (
-                <span key={c.id} className="counter" style={{ background: c.hex }}>
-                  {c.count}
-                </span>
-              ))}
+              {card.counters.map((c) =>
+                c.label ? (
+                  // Player counter: told apart by its label; the count sits in a small bubble.
+                  <span key={c.id} className="counter counter-player" style={{ background: c.hex }}>
+                    {c.label}
+                    <span className="counter-count">{c.count}</span>
+                  </span>
+                ) : (
+                  <span key={c.id} className="counter" style={{ background: c.hex }}>
+                    {c.count}
+                  </span>
+                ),
+              )}
             </div>
           )}
         </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { CardDefinition, CardId } from '../../domain/cards/types';
 import type { PlaytestCommand, ZoneTarget } from '../../domain/playtest/commands';
 import type { InstanceId, PlaytestState, Vec2 } from '../../domain/playtest/types';
@@ -10,7 +10,9 @@ import { useLibrary } from '../../state/libraryStore';
 import { usePlaytest } from '../../state/playtestStore';
 import { ConfirmDialog, Modal } from '../../ui/Modal';
 import { CardView } from '../cards/CardView';
+import { CounterDialog } from './CounterDialog';
 import { GestureSettings } from './GestureSettings';
+import { PileListDialog } from './PileListDialog';
 import { PlayCard, VisibleCardView, type CardActions } from './PlayCard';
 import { DeckZone, PileZone, type Pile } from './Zones';
 import './table.css';
@@ -61,6 +63,8 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
   const handZone = useDropZone('hand', 1);
 
   const [magnified, setMagnified] = useState<InstanceId | null>(null);
+  const [counterFor, setCounterFor] = useState<InstanceId | null>(null);
+  const [openPile, setOpenPile] = useState<Pile | null>(null);
   const [deckDrop, setDeckDrop] = useState<InstanceId | null>(null);
   const [dialog, setDialog] = useState<'deck' | 'menu' | 'gestures' | 'reset' | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -149,15 +153,21 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
   const cardActions = (id: InstanceId, where: 'canvas' | 'hand'): CardActions => ({
     onTap: () => setMagnified(id),
     onDoubleTap: where === 'canvas' ? () => dispatch({ type: 'toggleTapped', instanceId: id }) : undefined,
-    onLongPress: () => notify('Counters arrive in the next update'),
+    onLongPress: () => setCounterFor(id),
+    // In a scrollable hand, sideways swipes scroll it; moving mostly up or down picks the card up.
+    canStartDrag:
+      where === 'hand'
+        ? (start, point) => !handScrollable || Math.abs(point.y - start.y) > Math.abs(point.x - start.x)
+        : undefined,
     onDragStart: (start, offset) => beginDrag({ kind: 'card', instanceId: id }, start, offset),
     onDragMove: moveDrag,
     onDragEnd: endDrag,
     onDragCancel: cancelDrag,
   });
 
-  // ---------- hand layout: overlap cards when they don't fit ----------
+  // ---------- hand layout: overlap cards up to 40%, then scroll sideways ----------
   const [handWidth, setHandWidth] = useState(0);
+  const [handScrollable, setHandScrollable] = useState(false);
   useEffect(() => {
     const el = handEl.current;
     if (!el) return;
@@ -166,8 +176,13 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
     return () => ro.disconnect();
   }, []);
   const hand = player.zones.hand;
+  const w = cardWidth();
   const handGap =
-    hand.length < 2 ? 8 : Math.min(8, (handWidth - 24 - hand.length * cardWidth()) / (hand.length - 1));
+    hand.length < 2 ? 8 : Math.max(-0.4 * w, Math.min(8, (handWidth - 24 - hand.length * w) / (hand.length - 1)));
+  useLayoutEffect(() => {
+    const el = handEl.current;
+    if (el) setHandScrollable(el.scrollWidth > el.clientWidth + 1);
+  });
 
   const switchPlayer = (delta: number) =>
     dispatch({ type: 'selectPlayer', playerId: (playerId + delta + playerCount) % playerCount });
@@ -228,8 +243,8 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
 
         <div className="corner">
           <div className="piles">
-            <PileZone pile="graveyard" count={player.zones.graveyard.length} onTap={() => notify('The Graveyard list arrives in the next update')} />
-            <PileZone pile="exile" count={player.zones.exile.length} onTap={() => notify('The Exile list arrives in the next update')} />
+            <PileZone pile="graveyard" count={player.zones.graveyard.length} onTap={() => setOpenPile('graveyard')} />
+            <PileZone pile="exile" count={player.zones.exile.length} onTap={() => setOpenPile('exile')} />
           </div>
           <DeckZone
             count={player.zones.deck.length}
@@ -256,22 +271,25 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
           ‹
         </button>
         <div
-          className="hand drop-zone"
+          className={`hand drop-zone${handScrollable ? ' is-scrollable' : ''}`}
           ref={(el) => {
             handEl.current = el;
             handZone(el);
           }}
         >
-          {hand.length === 0 && <span className="hand-empty">Hand</span>}
-          {hand.map((id, i) => (
-            <PlayCard
-              key={id}
-              card={view(id)}
-              actions={cardActions(id, 'hand')}
-              dragging={draggedId === id}
-              style={{ marginLeft: i === 0 ? 0 : handGap, zIndex: i }}
-            />
-          ))}
+          {/* margin:auto centres the cards when they fit and aligns them left when scrolling */}
+          <div className="hand-inner">
+            {hand.length === 0 && <span className="hand-empty">Hand</span>}
+            {hand.map((id, i) => (
+              <PlayCard
+                key={id}
+                card={view(id)}
+                actions={cardActions(id, 'hand')}
+                dragging={draggedId === id}
+                style={{ marginLeft: i === 0 ? 0 : handGap, zIndex: i }}
+              />
+            ))}
+          </div>
         </div>
         <button
           className="nav-arrow"
@@ -304,6 +322,24 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
           {notice}
         </div>
       )}
+
+      {openPile && (
+        <PileListDialog
+          pile={openPile}
+          cards={player.zones[openPile].map(view)}
+          onMagnify={setMagnified}
+          onMove={(id, to) => {
+            if (to.zone === 'canvas') {
+              // Fan out cards brought back to the table so they don't hide each other.
+              const k = player.zones.canvas.length % 6;
+              to = { zone: 'canvas', position: { x: 0.45 + k * 0.03, y: 0.45 + k * 0.03 } };
+            }
+            dispatch({ type: 'moveCard', instanceId: id, to });
+          }}
+          onClose={() => setOpenPile(null)}
+        />
+      )}
+      {counterFor && <CounterDialog card={view(counterFor)} onClose={() => setCounterFor(null)} />}
 
       {magnifiedCard && magnifiedCard.kind !== 'hidden' && (
         <Modal className="scrim magnify-scrim" onClose={() => setMagnified(null)}>

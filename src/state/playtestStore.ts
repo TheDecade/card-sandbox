@@ -4,7 +4,7 @@ import type { CardDefinition } from '../domain/cards/types';
 import type { PlaytestCommand } from '../domain/playtest/commands';
 import { applyCommand } from '../domain/playtest/reducer';
 import { repairPlaytest } from '../domain/playtest/repair';
-import { createPlaytest, shuffleDeckCommand } from '../domain/playtest/setup';
+import { createPlaytest, playerCountCommands, shuffleDeckCommand } from '../domain/playtest/setup';
 import type { PlayerId, PlaytestState } from '../domain/playtest/types';
 import { repos as defaultRepos, type Repositories } from '../persistence/repositories';
 
@@ -22,6 +22,8 @@ export interface PlaytestStoreState {
   reset(cards: readonly CardDefinition[], playerCount: number): void;
   dispatch(cmd: PlaytestCommand): void;
   shuffleDeck(playerId: PlayerId): void;
+  /** Adds players with fresh decks, or removes the highest-numbered ones. */
+  setPlayerCount(count: number, cards: readonly CardDefinition[]): void;
 }
 
 export function createPlaytestStore(repos: Repositories) {
@@ -73,6 +75,11 @@ export function createPlaytestStore(repos: Repositories) {
     shuffleDeck(playerId) {
       const current = get().state;
       if (current) get().dispatch(shuffleDeckCommand(current, playerId));
+    },
+
+    setPlayerCount(count, cards) {
+      const current = get().state;
+      if (current) playerCountCommands(current, count, cards).forEach(get().dispatch);
     },
   }));
 }

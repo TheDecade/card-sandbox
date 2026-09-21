@@ -184,6 +184,23 @@ describe('drag', () => {
     expect(h.onTap).not.toHaveBeenCalled();
   });
 
+  it('lets the element decline a drag (e.g. a sideways swipe that scrolls)', () => {
+    const h = { ...allHandlers(), canStartDrag: vi.fn((s: { x: number; y: number }, p: { x: number; y: number }) => Math.abs(p.y - s.y) > Math.abs(p.x - s.x)) };
+    const { r, timers, p } = setup(h);
+    r.down(1, p());
+    r.move(1, p(130, 102)); // sideways: declined
+    r.move(1, p(130, 200));
+    r.up(1, p(130, 200));
+    timers.advance(1000);
+    expect(h.onDragStart).not.toHaveBeenCalled();
+    expect(h.onTap).not.toHaveBeenCalled();
+    expect(h.onLongPress).not.toHaveBeenCalled();
+
+    r.down(2, p());
+    r.move(2, p(102, 130)); // upward/downward: accepted
+    expect(h.onDragStart).toHaveBeenCalledOnce();
+  });
+
   it('cancels a pending tap when the next press becomes a drag', () => {
     const h = allHandlers();
     const { r, timers, p } = setup(h);

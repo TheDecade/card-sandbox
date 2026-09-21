@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { formatBytes } from './platform';
@@ -73,6 +73,28 @@ describe('Card Edit', () => {
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Discard' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /All/ })).toHaveTextContent('1');
+  });
+});
+
+describe('Options', () => {
+  it('changes the number of players, asking before removing one from a running playtest', async () => {
+    await renderApp();
+    fireEvent.click(screen.getByRole('button', { name: 'Playtest' })); // starts a 2-player playtest
+    expect(await screen.findByText(/of 2/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to menu' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Options' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'More players' }));
+    await waitFor(() => expect(screen.getByLabelText('Number of players')).toHaveTextContent('3'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fewer players' }));
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('Remove Player 3?');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByLabelText('Number of players')).toHaveTextContent('3');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fewer players' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    await waitFor(() => expect(screen.getByLabelText('Number of players')).toHaveTextContent('2'));
   });
 });
 

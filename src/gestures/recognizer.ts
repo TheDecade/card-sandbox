@@ -24,6 +24,11 @@ export interface GestureHandlers {
   onDragMove?: (point: Point) => void;
   onDragEnd?: (point: Point) => void;
   onDragCancel?: () => void;
+  /**
+   * Called once the finger has moved past the slop. Returning false declines the drag and lets
+   * the browser have the gesture (e.g. a sideways swipe that scrolls the hand).
+   */
+  canStartDrag?: (start: Point, point: Point) => boolean;
   /** True while a press is held that could still become a long-press (for visual feedback). */
   onPressChange?: (pressing: boolean) => void;
 }
@@ -53,7 +58,7 @@ type State =
   | { kind: 'pressed'; pointerId: number; start: Point; startTime: number; timer: unknown }
   | { kind: 'dragging'; pointerId: number }
   | { kind: 'longPressed'; pointerId: number }
-  // Moved past the slop on an element without a drag handler: nothing fires on release.
+  // Moved past the slop but no drag (no handler, or declined): nothing fires on release.
   | { kind: 'ignored'; pointerId: number };
 
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -93,7 +98,7 @@ export class GestureRecognizer {
     this.endPress(s);
     this.dropPendingTap(); // a tap followed by a drag is not a double-tap
     const h = this.getHandlers();
-    if (h.onDragStart) {
+    if (h.onDragStart && (h.canStartDrag?.(s.start, point) ?? true)) {
       this.state = { kind: 'dragging', pointerId };
       h.onDragStart({ start: s.start, point });
     } else {

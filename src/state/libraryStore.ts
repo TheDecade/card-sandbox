@@ -19,6 +19,7 @@ export interface LibraryState {
   setEnabled(id: CardId, enabled: boolean): Promise<void>;
   addImages(images: ImageAsset[]): Promise<void>;
   addSampleCards(): Promise<void>;
+  updateSettings(patch: Partial<Settings>): Promise<void>;
   getCard(id: CardId): CardDefinition | undefined;
 }
 
@@ -73,6 +74,12 @@ export function createLibraryStore(repos: Repositories) {
       const cards = sampleCards().map((c, i) => ({ ...newCardDefinition(now + i), ...c }));
       await repos.saveCards(cards);
       set((s) => ({ cards: [...s.cards, ...cards] }));
+    },
+
+    async updateSettings(patch) {
+      const settings = { ...get().settings, ...patch };
+      await repos.saveSettings(settings);
+      set({ settings });
     },
 
     getCard(id) {

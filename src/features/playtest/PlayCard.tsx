@@ -33,6 +33,7 @@ export interface CardActions {
   onDragMove: (p: Point) => void;
   onDragEnd: (p: Point) => void;
   onDragCancel: () => void;
+  canStartDrag?: (start: Point, point: Point) => boolean;
 }
 
 /** Offset from a touch point to the centre of an element (so a card doesn't jump to the finger). */
@@ -65,6 +66,7 @@ export function PlayCard({
     onDragMove: actions.onDragMove,
     onDragEnd: actions.onDragEnd,
     onDragCancel: actions.onDragCancel,
+    canStartDrag: actions.canStartDrag,
   });
   return (
     <div

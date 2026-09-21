@@ -196,10 +196,29 @@
   height: 100%;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 0 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
   border-radius: 14px;
   background: rgb(0 0 0 / 0.2);
+}
+.hand::-webkit-scrollbar {
+  display: none;
+}
+.hand-inner {
+  display: flex;
+  align-items: center;
+  margin: 0 auto; /* centred when the cards fit, left-aligned when the hand scrolls */
+  padding: 0 12px;
+}
+/* A full hand scrolls with a sideways swipe; the browser does the scrolling itself. */
+.hand.is-scrollable,
+.hand.is-scrollable .table-card {
+  touch-action: pan-x;
+}
+.hand.is-scrollable {
+  mask-image: linear-gradient(to right, transparent, black 18px, black calc(100% - 18px), transparent);
 }
 .hand .table-card {
   position: relative;
@@ -274,4 +293,113 @@
 .dialog-actions-stack {
   flex-direction: column;
   align-items: stretch;
+}
+
+/* ---------- Counter dialog ---------- */
+.counter-dialog .field-label {
+  margin: 16px 0 8px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.current-counters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 32px;
+  align-items: center;
+}
+.counter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 6px;
+  border-radius: 16px;
+  background: var(--felt);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.counter-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid white;
+}
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.stepper .btn {
+  width: 64px;
+  font-size: 1.8rem;
+}
+.stepper-value {
+  min-width: 2.5ch;
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.swatch {
+  width: 52px;
+  height: 52px;
+  border: 3px solid rgb(255 255 255 / 0.25);
+  border-radius: 50%;
+}
+.swatch.is-selected {
+  border-color: white;
+  box-shadow: 0 0 0 3px var(--accent);
+}
+.counter-dialog .dialog-actions {
+  flex-wrap: wrap;
+}
+
+/* ---------- Graveyard / Exile list ---------- */
+.pile-dialog h3 .muted {
+  font-weight: 500;
+}
+.pile-list {
+  margin: 12px 0 16px;
+  padding: 0;
+  list-style: none;
+}
+.pile-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.pile-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.pile-row-main:active {
+  background: var(--felt);
+}
+.pile-thumb {
+  flex: none;
+  width: 64px;
+}
+.counter-dialog {
+  width: min(560px, 100%);
 }

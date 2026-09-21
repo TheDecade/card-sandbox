@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { CardEditScreen } from '../features/cardEdit/CardEditScreen';
+import { OptionsScreen } from '../features/options/OptionsScreen';
 import { PlaytestScreen, ResetPlaytestDialog } from '../features/playtest/PlaytestScreen';
 import { startPlaytestAutosave } from '../persistence/autosave';
 import { repos } from '../persistence/repositories';
 import { useLibrary } from '../state/libraryStore';
 import { usePlaytest } from '../state/playtestStore';
 import { UpdateToast } from './UpdateToast';
-import { formatBytes, isStandalone, requestPersistentStorage, type StorageStatus } from './platform';
+import { isStandalone, requestPersistentStorage, type StorageStatus } from './platform';
 
 type Screen = 'menu' | 'playtest' | 'cardEdit' | 'options';
 
@@ -67,7 +68,7 @@ export function App() {
         <CardEditScreen onBack={() => setScreen('menu')} />
       )}
       {screen === 'options' && (
-        <Options storage={storage} standalone={standalone} onBack={() => setScreen('menu')} />
+        <OptionsScreen storage={storage} standalone={standalone} onBack={() => setScreen('menu')} />
       )}
 
       {confirmReset && <ResetPlaytestDialog onDone={() => setConfirmReset(false)} />}
@@ -106,55 +107,6 @@ function MainMenu({ onOpen, onReset }: { onOpen: (s: Screen) => void; onReset: (
       <p className="version">
         v{__APP_VERSION__} · {__BUILD_HASH__}
       </p>
-    </main>
-  );
-}
-
-function ScreenHeader({ title, onBack }: { title: string; onBack: () => void }) {
-  return (
-    <header className="screen-header">
-      <button className="btn" onClick={onBack} aria-label="Back to menu">
-        ‹ Menu
-      </button>
-      <h2>{title}</h2>
-    </header>
-  );
-}
-
-function Options({
-  storage,
-  standalone,
-  onBack,
-}: {
-  storage: StorageStatus | null;
-  standalone: boolean;
-  onBack: () => void;
-}) {
-  const persisted =
-    storage?.persisted == null ? 'unknown' : storage.persisted ? 'yes' : 'no (not guaranteed)';
-  return (
-    <main className="screen">
-      <ScreenHeader title="Options" onBack={onBack} />
-      <section className="panel">
-        <h3>About</h3>
-        <dl className="facts">
-          <dt>Version</dt>
-          <dd>
-            {__APP_VERSION__} ({__BUILD_HASH__})
-          </dd>
-          <dt>Built</dt>
-          <dd>{new Date(__BUILD_TIME__).toLocaleString()}</dd>
-          <dt>Installed app</dt>
-          <dd>{standalone ? 'yes' : 'no, running in a browser tab'}</dd>
-          <dt>Persistent storage</dt>
-          <dd>{persisted}</dd>
-          <dt>Storage used</dt>
-          <dd>
-            {storage?.usageBytes != null ? formatBytes(storage.usageBytes) : '—'}
-            {storage?.quotaBytes != null ? ` of ${formatBytes(storage.quotaBytes)}` : ''}
-          </dd>
-        </dl>
-      </section>
     </main>
   );
 }

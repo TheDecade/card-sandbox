@@ -1,6 +1,12 @@
 // Validation for data read back from storage (and, later, from backup files).
 import { z } from 'zod';
-import { DEFAULT_SETTINGS, MAX_PLAYERS, MIN_PLAYERS, type Settings } from '../domain/settings/types';
+import {
+  DEFAULT_SETTINGS,
+  MAX_PLAYER_VALUES,
+  MAX_PLAYERS,
+  MIN_PLAYERS,
+  type Settings,
+} from '../domain/settings/types';
 
 export const cardDefinitionSchema = z.object({
   id: z.string().min(1),
@@ -18,6 +24,9 @@ export const settingsSchema = z.object({
   schemaVersion: z.number().int(),
   playerCount: z.number().int().min(MIN_PLAYERS).max(MAX_PLAYERS),
   countersPersist: z.boolean(),
+  playerValues: z
+    .array(z.object({ id: z.string().min(1), name: z.string(), start: z.number().int() }))
+    .max(MAX_PLAYER_VALUES),
   lastBackupAt: z.number().nullable(),
 });
 
@@ -42,6 +51,7 @@ export const playtestSchema = z.object({
       z.object({
         id: z.number().int(),
         zones: z.object({ deck: idList, hand: idList, canvas: idList, graveyard: idList, exile: idList }),
+        values: z.record(z.string(), z.number()).optional(), // added in v3
       }),
     )
     .min(1),

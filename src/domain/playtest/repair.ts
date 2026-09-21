@@ -30,7 +30,7 @@ export function repairPlaytest(s: PlaytestState): { state: PlaytestState; fixes:
   const fixes = checkInvariants(s).length;
   if (fixes === 0) return { state: s, fixes: 0 };
 
-  const players = s.players.map((_, index) => ({ id: index, zones: emptyZones() }));
+  const players = s.players.map((p, index) => ({ id: index, zones: emptyZones(), values: { ...p.values } }));
   const instances: Record<string, CardInstance> = {};
 
   s.players.forEach((p, index) => {

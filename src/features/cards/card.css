@@ -134,3 +134,50 @@
   font-size: 6cqw;
   font-weight: 800;
 }
+
+/* ---------- Cost symbols (sized in em: they follow the surrounding font size) ---------- */
+.cost {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.12em;
+}
+.pip {
+  display: inline-grid;
+  place-items: center;
+  width: 1.3em;
+  height: 1.3em;
+  border-radius: 50%;
+  box-shadow: 0 0.06em 0.12em rgb(0 0 0 / 0.45), inset 0 0 0 0.05em rgb(0 0 0 / 0.25);
+  font-weight: 800;
+  font-size: 1em;
+  line-height: 1;
+}
+.pip-plain {
+  width: auto;
+  min-width: 1.6em;
+  height: 1.6em;
+  padding: 0 0.25em;
+  border-radius: 0.8em;
+  background: #3b6b52;
+  color: white;
+}
+.pip-unknown {
+  width: auto;
+  min-width: 1.3em;
+  padding: 0 0.25em;
+  border-radius: 0.65em;
+  background: #cbc5b9;
+  color: #2b2924;
+  font-size: 0.8em;
+}
+.pip-hybrid-num {
+  font-size: 0.75em;
+  transform: translate(-0.2em, -0.2em);
+}
+.card-cost-pips {
+  font-size: 8cqw;
+}
+.row-cost-pips {
+  font-size: 1.05rem;
+}

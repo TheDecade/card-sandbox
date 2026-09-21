@@ -4,6 +4,7 @@ import type { ZoneTarget } from '../../domain/playtest/commands';
 import type { InstanceId } from '../../domain/playtest/types';
 import type { VisibleCard } from '../../domain/playtest/visibility';
 import { Modal } from '../../ui/Modal';
+import { CostView } from '../cards/CostView';
 import { CounterChip, counterBadges, VisibleCardView } from './PlayCard';
 import { PILE_LABEL, type Pile } from './Zones';
 
@@ -57,9 +58,7 @@ export function PileListDialog({
                       </span>
                       <span className="row-desc">{card.kind === 'revealed' ? card.def.description : ''}</span>
                     </span>
-                    {card.kind === 'revealed' && card.def.cost !== '' && (
-                      <span className="row-cost">{card.def.cost}</span>
-                    )}
+                    {card.kind === 'revealed' && <CostView cost={card.def.cost} className="row-cost-pips" />}
                     {card.kind === 'revealed' &&
                       counterBadges(card.counters).map((b) => <CounterChip key={b.id} badge={b} />)}
                   </button>

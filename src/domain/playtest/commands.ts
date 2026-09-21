@@ -21,4 +21,5 @@ export type PlaytestCommand =
   | { type: 'selectPlayer'; playerId: PlayerId }
   | { type: 'addPlayers'; players: PlayerState[]; instances: CardInstance[] }
   | { type: 'removePlayersFrom'; playerId: PlayerId }
-  | { type: 'setRules'; rules: Partial<PlaytestRules> };
+  | { type: 'setRules'; rules: Partial<PlaytestRules> }
+  | { type: 'setPlayerValue'; playerId: PlayerId; valueId: string; value: number };

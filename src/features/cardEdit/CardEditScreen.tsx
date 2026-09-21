@@ -5,6 +5,7 @@ import { useImageUrl } from '../../images/useImageUrl';
 import { useLibrary } from '../../state/libraryStore';
 import { Toggle } from '../../ui/Toggle';
 import { hueFromString } from '../cards/CardView';
+import { CostView } from '../cards/CostView';
 import { CardEditorDialog } from './CardEditorDialog';
 import './cardEdit.css';
 
@@ -148,7 +149,7 @@ function CardRow({
           <span className="row-name">{displayName(card)}</span>
           <span className="row-desc">{card.description || '—'}</span>
         </span>
-        {card.cost !== '' && <span className="row-cost">{card.cost}</span>}
+        <CostView cost={card.cost} className="row-cost-pips" />
         {!card.enabled && <span className="row-tag">Disabled</span>}
       </button>
       <Toggle checked={card.enabled} label={`${displayName(card)} enabled`} onChange={onToggle} />

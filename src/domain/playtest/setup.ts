@@ -42,7 +42,7 @@ export function createPlayer(
     instances.map((i) => i.id),
     rand,
   );
-  return { player: { id: playerId, zones }, instances };
+  return { player: { id: playerId, zones, values: {} }, instances };
 }
 
 /** A fresh playtest. Reset Playtest = replacing the current state with this. */

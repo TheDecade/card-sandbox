@@ -52,7 +52,7 @@ describe('Card Edit', () => {
     fireEvent.click(screen.getAllByRole('button', { name: '+ New card' })[0]!);
     let editor = screen.getByRole('dialog', { name: 'Edit card' });
     fireEvent.change(within(editor).getByPlaceholderText('Card name'), { target: { value: 'Ember Scout' } });
-    fireEvent.change(within(editor).getByPlaceholderText('e.g. 3'), { target: { value: '2' } });
+    fireEvent.change(within(editor).getByPlaceholderText('e.g. {2}{W}'), { target: { value: '2' } });
     fireEvent.click(within(editor).getByRole('button', { name: 'Save' }));
     const row = await screen.findByRole('button', { name: /Ember Scout/ });
     expect(row).toHaveTextContent('2');

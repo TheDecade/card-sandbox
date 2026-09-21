@@ -5,6 +5,8 @@ import { useLibrary } from '../../state/libraryStore';
 import { ConfirmDialog, Modal } from '../../ui/Modal';
 import { Toggle } from '../../ui/Toggle';
 import { DefinitionCard } from '../cards/DefinitionCard';
+import { CostView } from '../cards/CostView';
+import { CostSymbolPad } from './CostSymbolPad';
 import { ImagePicker } from './ImagePicker';
 
 /**
@@ -74,15 +76,24 @@ export function CardEditorDialog({
               />
             </label>
 
-            <label className="field field-cost">
-              <span className="field-label">Cost</span>
-              <input
-                value={draft.cost}
-                placeholder="e.g. 3"
-                autoComplete="off"
-                onChange={(e) => update({ cost: e.target.value })}
-              />
-            </label>
+            <div className="field field-cost">
+              <label className="field" htmlFor="card-cost">
+                <span className="field-label">Cost</span>
+              </label>
+              <div className="cost-input-row">
+                <input
+                  id="card-cost"
+                  value={draft.cost}
+                  placeholder="e.g. {2}{W}"
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  spellCheck={false}
+                  onChange={(e) => update({ cost: e.target.value })}
+                />
+                <CostView cost={draft.cost} className="row-cost-pips" />
+              </div>
+              <CostSymbolPad value={draft.cost} onChange={(cost) => update({ cost })} />
+            </div>
 
             <label className="field">
               <span className="field-label">Description</span>

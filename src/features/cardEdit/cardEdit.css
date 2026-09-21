@@ -249,8 +249,50 @@
   resize: vertical;
   line-height: 1.4;
 }
-.field-cost input {
-  max-width: 10em;
+.cost-input-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cost-input-row input {
+  max-width: 14em;
+}
+.cost-pad {
+  display: grid;
+  gap: 8px;
+}
+.cost-pad-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cost-key {
+  min-width: 44px;
+  height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-weight: 800;
+}
+.cost-key-color {
+  width: 44px;
+  padding: 0;
+  border: 2px solid rgb(0 0 0 / 0.25);
+}
+.cost-key-color.is-picked,
+.cost-key.is-active {
+  box-shadow: 0 0 0 3px var(--accent);
+}
+.cost-key-wide {
+  padding: 0 16px;
+}
+.cost-pad-hint {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.9rem;
 }
 .card-id {
   color: var(--muted);

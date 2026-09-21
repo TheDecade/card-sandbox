@@ -4,6 +4,7 @@ import type { InstanceId, PlaytestState, Vec2 } from './types';
 import { ZONE_RULES } from './zones';
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+const MAX_VALUE = 999_999;
 const clampPos = (p: Vec2): Vec2 => ({ x: clamp01(p.x), y: clamp01(p.y) });
 
 /**
@@ -70,6 +71,13 @@ export function applyCommand(state: PlaytestState, cmd: PlaytestCommand): Playte
       case 'setRules':
         draft.rules = { ...draft.rules, ...cmd.rules };
         break;
+
+      case 'setPlayerValue': {
+        const player = draft.players[cmd.playerId];
+        if (!player || !Number.isFinite(cmd.value)) return;
+        player.values[cmd.valueId] = Math.max(-MAX_VALUE, Math.min(MAX_VALUE, Math.round(cmd.value)));
+        break;
+      }
     }
   });
 }

@@ -1,7 +1,7 @@
 import type { CardId } from '../cards/types';
 import type { CounterColorId } from '../counters/colors';
 
-export const PLAYTEST_SCHEMA_VERSION = 2; // 2: added rules
+export const PLAYTEST_SCHEMA_VERSION = 3; // 2: added rules; 3: added player values
 
 export type InstanceId = string;
 export type PlayerId = number; // 0-based index; shown as "Player N+1"
@@ -31,6 +31,9 @@ export interface PlayerState {
   // Ordered ids per zone: the source of truth for membership AND order.
   // deck[0] = top; canvas order = stacking order (last on top); hand = left to right.
   zones: Record<ZoneId, InstanceId[]>;
+  // Player values (life, poison, …) by PlayerValueDef id. Missing = the value's starting number,
+  // so values added in Options mid-game simply start at their default.
+  values: Record<string, number>;
 }
 
 /** Table rules that can change while a playtest runs. */

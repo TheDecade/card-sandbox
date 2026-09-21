@@ -1,4 +1,5 @@
 import './card.css';
+import { CostView } from './CostView';
 
 // Display-only card. Its size comes from the parent's width; all text scales with it.
 
@@ -25,7 +26,7 @@ export function CardView({ card, faceUp = true }: { card?: CardContent; faceUp?:
       <div className="card-face">
         <div className="card-head">
           <span className="card-name">{card.name}</span>
-          {card.cost !== '' && <span className="card-cost">{card.cost}</span>}
+          <CostView cost={card.cost} className="card-cost-pips" />
         </div>
         <div
           className="card-art"

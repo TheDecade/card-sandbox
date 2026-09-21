@@ -84,11 +84,14 @@ describe('playtest store', () => {
     autosave.stop();
   });
 
-  it('upgrades a playtest saved before table rules existed', async () => {
-    const { rules: _dropped, ...v1 } = createPlaytest(1, CARDS);
-    await new SandboxDB(dbName).kv.put({ key: 'playtest', value: { ...v1, schemaVersion: 1 } });
+  it('upgrades a playtest saved before table rules and player values existed', async () => {
+    const { rules: _dropped, players, ...v1 } = createPlaytest(2, CARDS);
+    const oldPlayers = players.map(({ values: _v, ...p }) => p);
+    await new SandboxDB(dbName).kv.put({ key: 'playtest', value: { ...v1, players: oldPlayers, schemaVersion: 1 } });
     const { store, autosave } = await open();
-    expect(store.getState().state).toMatchObject({ schemaVersion: 2, rules: { countersPersist: true } });
+    const s = store.getState().state!;
+    expect(s).toMatchObject({ schemaVersion: 3, rules: { countersPersist: true } });
+    expect(s.players.map((p) => p.values)).toEqual([{}, {}]);
     autosave.stop();
   });
 

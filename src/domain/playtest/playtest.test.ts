@@ -171,6 +171,31 @@ describe('counter persistence rule', () => {
   });
 });
 
+describe('player values', () => {
+  it('sets per-player values, as whole numbers that may go negative', () => {
+    const s = run(
+      fresh(2),
+      { type: 'setPlayerValue', playerId: 0, valueId: 'life', value: 17 },
+      { type: 'setPlayerValue', playerId: 1, valueId: 'life', value: -3.4 },
+      { type: 'setPlayerValue', playerId: 1, valueId: 'poison', value: 2 },
+    );
+    expect(s.players[0]!.values).toEqual({ life: 17 });
+    expect(s.players[1]!.values).toEqual({ life: -3, poison: 2 });
+  });
+
+  it('ignores unknown players and non-numbers', () => {
+    const s0 = fresh(1);
+    expect(run(s0, { type: 'setPlayerValue', playerId: 5, valueId: 'life', value: 1 })).toBe(s0);
+    expect(run(s0, { type: 'setPlayerValue', playerId: 0, valueId: 'life', value: NaN })).toBe(s0);
+  });
+
+  it('gives new players no values yet (each value starts at its default)', () => {
+    const s0 = fresh(1);
+    const s = run(s0, ...playerCountCommands(s0, 2, CARDS, { makeId: idMaker2() }));
+    expect(s.players[1]!.values).toEqual({});
+  });
+});
+
 describe('tapping, counters, canvas moves', () => {
   const onCanvas = () => {
     const s0 = fresh();
@@ -306,6 +331,7 @@ describe('fuzz: random command sequences keep the state consistent', () => {
     fc.record({ t: fc.constant('players' as const), n: fc.integer({ min: 1, max: 4 }) }),
     fc.record({ t: fc.constant('select' as const), p: fc.nat(4) }),
     fc.record({ t: fc.constant('rules' as const), on: fc.boolean() }),
+    fc.record({ t: fc.constant('value' as const), p: fc.nat(4), v: fc.integer({ min: -50, max: 50 }) }),
   );
 
   it('holds all invariants and never loses or duplicates a card', () => {
@@ -326,6 +352,7 @@ describe('fuzz: random command sequences keep the state consistent', () => {
             case 'players': cmds = playerCountCommands(s, step.n, CARDS, { makeId }); break;
             case 'select': cmds = [{ type: 'selectPlayer', playerId: step.p }]; break;
             case 'rules': cmds = [{ type: 'setRules', rules: { countersPersist: step.on } }]; break;
+            case 'value': cmds = [{ type: 'setPlayerValue', playerId: step.p, valueId: 'life', value: step.v }]; break;
           }
           s = run(s, ...cmds);
           expect(checkInvariants(s)).toEqual([]);

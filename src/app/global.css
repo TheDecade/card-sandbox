@@ -259,3 +259,32 @@ textarea {
   font: inherit;
   font-size: 0.95rem;
 }
+.values-note {
+  margin: 0 0 12px;
+}
+.value-defs {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.value-def {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.value-def-name {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--felt);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+}
+.value-def .value-input {
+  min-height: 44px;
+  font-size: 1.1rem;
+}

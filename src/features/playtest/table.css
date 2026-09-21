@@ -420,3 +420,85 @@
   font-size: 0.75rem;
   font-weight: 800;
 }
+
+/* ---------- Player values (under the deck) ---------- */
+.player-values {
+  width: var(--card-w);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgb(0 0 0 / 0.35);
+  color: var(--text);
+  font: inherit;
+  touch-action: manipulation;
+}
+.player-values:active {
+  filter: brightness(1.25);
+}
+.player-value-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+.player-value-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.player-value-num {
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.values-dialog {
+  width: min(560px, 100%);
+}
+.values-list {
+  display: grid;
+  gap: 14px;
+  margin: 16px 0 20px;
+}
+.value-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.value-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.value-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.value-step {
+  min-width: 52px;
+  min-height: 52px;
+  padding: 0 8px;
+  font-size: 1.05rem;
+}
+.value-input {
+  width: 4.5em;
+  min-height: 52px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--felt);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.4rem;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}

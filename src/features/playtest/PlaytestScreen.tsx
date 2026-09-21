@@ -13,6 +13,7 @@ import { CardView } from '../cards/CardView';
 import { CounterDialog } from './CounterDialog';
 import { GestureSettings } from './GestureSettings';
 import { PileListDialog } from './PileListDialog';
+import { PlayerValuesDialog, PlayerValuesSlot } from './PlayerValues';
 import { PlayCard, VisibleCardView, type CardActions } from './PlayCard';
 import { DeckZone, PileZone, type Pile } from './Zones';
 import './table.css';
@@ -50,6 +51,7 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
   const cards = useLibrary((s) => s.cards);
   const dispatch = usePlaytest((s) => s.dispatch);
   const saveError = usePlaytest((s) => s.saveError);
+  const valueDefs = useLibrary((s) => s.settings.playerValues);
 
   const defs = useMemo(() => new Map<CardId, CardDefinition>(cards.map((c) => [c.id, c])), [cards]);
   const view = (id: InstanceId): VisibleCard => viewCard(state, (d) => defs.get(d), id);
@@ -70,7 +72,7 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
   const [counterFor, setCounterFor] = useState<InstanceId | null>(null);
   const [openPile, setOpenPile] = useState<Pile | null>(null);
   const [deckDrop, setDeckDrop] = useState<InstanceId | null>(null);
-  const [dialog, setDialog] = useState<'deck' | 'menu' | 'gestures' | 'reset' | null>(null);
+  const [dialog, setDialog] = useState<'deck' | 'menu' | 'gestures' | 'reset' | 'values' | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const notify = (msg: string) => {
@@ -289,6 +291,7 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
             onDragEnd={endDrag}
             onDragCancel={snapBack}
           />
+          <PlayerValuesSlot player={player} defs={valueDefs} onOpen={() => setDialog('values')} />
         </div>
       </div>
 
@@ -467,6 +470,9 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
         </Modal>
       )}
       {dialog === 'gestures' && <GestureSettings onClose={() => setDialog(null)} />}
+      {dialog === 'values' && (
+        <PlayerValuesDialog playerId={playerId} player={player} defs={valueDefs} onClose={() => setDialog(null)} />
+      )}
       {dialog === 'reset' && (
         <ResetPlaytestDialog
           onDone={(didReset) => {

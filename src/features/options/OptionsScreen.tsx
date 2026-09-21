@@ -6,6 +6,7 @@ import { usePlaytest } from '../../state/playtestStore';
 import { ConfirmDialog } from '../../ui/Modal';
 import { Toggle } from '../../ui/Toggle';
 import { BackupSection } from './BackupSection';
+import { PlayerValuesSection } from './PlayerValuesSection';
 
 export function OptionsScreen({
   storage,
@@ -90,6 +91,8 @@ export function OptionsScreen({
         </p>
         {error && <p className="picker-problem">{error}</p>}
       </section>
+
+      <PlayerValuesSection />
 
       <section className="panel">
         <h3>Counters</h3>

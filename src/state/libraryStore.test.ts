@@ -24,6 +24,7 @@ describe('library store', () => {
     expect(s.status).toBe('ready');
     expect(s.cards).toEqual([]);
     expect(s.settings.playerCount).toBe(2);
+    expect(s.settings.playerValues).toEqual([{ id: 'life', name: 'Life', start: 20 }]);
   });
 
   it('saves new and edited cards, and they survive reopening', async () => {

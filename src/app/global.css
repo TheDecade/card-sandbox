@@ -1,0 +1,218 @@
+:root {
+  --felt: #1f2a24;
+  --felt-2: #26352d;
+  --panel: #2d3e35;
+  --line: #41584b;
+  --text: #eef1ea;
+  --muted: #9fb0a5;
+  --accent: #c9a54a;
+  --primary: #3b8a62;
+  --danger: #c2453d;
+  --radius: 14px;
+  --touch: 56px; /* minimum height for primary touch targets */
+
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text);
+  background: var(--felt);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* The app is a fixed, full-screen surface: no page scroll, bounce or pull-to-refresh. */
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--felt);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none; /* no long-press menu (long-press is used for counters) */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation; /* no double-tap zoom */
+}
+
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+  font-size: 16px; /* below 16px iPad Safari zooms into the field */
+}
+
+.app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 80ms ease, filter 80ms ease;
+}
+.btn:active {
+  transform: scale(0.97);
+  filter: brightness(1.15);
+}
+.btn-big {
+  min-height: var(--touch);
+  font-size: 1.25rem;
+}
+.btn-small {
+  min-height: 36px;
+  padding: 0 12px;
+}
+.btn-primary {
+  background: var(--primary);
+  border-color: transparent;
+}
+.btn-danger {
+  background: transparent;
+  border-color: var(--danger);
+  color: #ff8a80;
+}
+.dialog .btn-danger {
+  background: var(--danger);
+  color: white;
+}
+
+/* ---------- Main menu ---------- */
+.menu {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  padding: 24px;
+}
+.menu-title {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+.menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(360px, 100%);
+}
+.version {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ---------- Generic screens ---------- */
+.screen {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 24px;
+}
+.screen-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.screen-header h2 {
+  margin: 0;
+}
+.muted {
+  color: var(--muted);
+}
+.panel {
+  margin-top: 20px;
+  max-width: 560px;
+  padding: 16px 20px;
+  background: var(--felt-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.panel h3 {
+  margin: 0 0 12px;
+}
+.facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 16px;
+  margin: 0;
+}
+.facts dt {
+  color: var(--muted);
+}
+.facts dd {
+  margin: 0;
+}
+
+/* ---------- Banner, toast, dialog ---------- */
+.banner {
+  padding: 10px 16px;
+  background: #5a4a1c;
+  color: #fff4d0;
+  font-size: 0.95rem;
+  text-align: center;
+}
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 10px 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
+}
+.scrim {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(0 0 0 / 0.55);
+}
+.dialog {
+  width: min(460px, 100%);
+  padding: 20px 24px;
+  background: var(--felt-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.dialog h3 {
+  margin: 0 0 8px;
+}
+.dialog p {
+  margin: 0 0 20px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}

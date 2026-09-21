@@ -1,8 +1,8 @@
+import './app/global.css'; // first, so feature stylesheets can override the base styles
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app/App';
 import { suppressBrowserGestures } from './app/platform';
-import './app/global.css';
 
 suppressBrowserGestures();
 

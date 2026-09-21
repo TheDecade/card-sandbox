@@ -1,0 +1,353 @@
+/* ---------- Card Edit screen ---------- */
+.card-edit {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.card-edit-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+.card-edit-bar h2 {
+  margin: 0 auto 0 4px;
+}
+
+.segmented {
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--felt-2);
+}
+.segmented button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+}
+.segmented button.is-active {
+  background: var(--panel);
+  color: var(--text);
+}
+.seg-count {
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+.card-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 16px 24px;
+  -webkit-overflow-scrolling: touch;
+}
+.list-empty {
+  padding: 24px 8px;
+}
+
+.card-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.card-row-main {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.card-row-main:active {
+  background: var(--felt-2);
+}
+.row-thumb {
+  flex: none;
+  width: 56px;
+  height: 78px;
+  overflow: hidden;
+  border-radius: 6px;
+  border: 1.5px solid var(--accent);
+  background: #d8d2c2;
+}
+.row-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.row-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row-desc {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row-cost {
+  flex: none;
+  display: grid;
+  place-items: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  border-radius: 18px;
+  background: #3b6b52;
+  font-weight: 800;
+}
+.row-tag {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #4a3b3b;
+  color: #ffc9c4;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.card-row.is-disabled .row-thumb,
+.card-row.is-disabled .row-text {
+  opacity: 0.5;
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 1.2rem;
+}
+.empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* ---------- Toggle ---------- */
+.toggle {
+  flex: none;
+  position: relative;
+  width: 58px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 17px;
+  background: #56655c;
+  transition: background 150ms ease;
+}
+.toggle.is-on {
+  background: var(--primary);
+}
+.toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
+  transition: transform 150ms ease;
+}
+.toggle.is-on .toggle-knob {
+  transform: translateX(24px);
+}
+
+/* ---------- Editor dialog ---------- */
+.dialog-wide {
+  width: min(900px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.editor-body {
+  display: grid;
+  grid-template-columns: minmax(180px, 280px) 1fr;
+  gap: 24px;
+  margin: 12px 0 20px;
+}
+.editor-preview {
+  align-self: start;
+  position: sticky;
+  top: 0;
+}
+.editor-form {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+.field {
+  display: grid;
+  gap: 6px;
+}
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.field-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.field-row .field-label {
+  min-width: 5em;
+}
+.field-hint {
+  font-size: 0.9rem;
+}
+.field input,
+.field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--felt);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+}
+.field textarea {
+  resize: vertical;
+  line-height: 1.4;
+}
+.field-cost input {
+  max-width: 10em;
+}
+.card-id {
+  color: var(--muted);
+  font-size: 0.85rem;
+  user-select: text;
+  -webkit-user-select: text;
+  overflow-wrap: anywhere;
+}
+.image-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 6px 12px 6px 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--felt);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+}
+.image-field-thumb {
+  width: 52px;
+  height: 52px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: repeating-linear-gradient(45deg, #34463c 0 6px, #2c3c33 6px 12px);
+}
+.image-field-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 700px) {
+  .editor-body {
+    grid-template-columns: 1fr;
+  }
+  .editor-preview {
+    position: static;
+    width: min(220px, 60%);
+    justify-self: center;
+  }
+}
+
+/* ---------- Image picker ---------- */
+.picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.picker-head h3 {
+  margin: 0;
+}
+.picker-status {
+  margin: 0 0 12px;
+  color: var(--accent);
+}
+.picker-problem {
+  margin: 0 16px 12px;
+  color: #ff8a80;
+}
+.dialog .picker-problem {
+  margin: 0 0 12px;
+}
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.image-tile {
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: hidden;
+  border: 3px solid transparent;
+  border-radius: 10px;
+  background: var(--felt);
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+}
+.image-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.image-tile.is-selected {
+  border-color: var(--accent);
+}
+.image-none {
+  border: 2px dashed var(--line);
+}
+.image-none.is-selected {
+  border: 3px solid var(--accent);
+}

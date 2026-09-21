@@ -6,15 +6,20 @@ import { getDropZoneRect, hitTestDropZone, setDropHover, useDropZone } from '../
 import type { Point } from '../../gestures/recognizer';
 import { useGestures } from '../../gestures/useGestures';
 import { Modal } from '../../ui/Modal';
-import { CardView, type CardFace } from './CardView';
+import { CardView, type CardContent } from '../cards/CardView';
 import { GestureSettings } from './GestureSettings';
 import './table.css';
 
 type Pile = 'graveyard' | 'exile';
 type DropTarget = 'canvas' | 'hand' | 'deck' | Pile;
 
-interface LabCard extends CardFace {
+interface LabCard {
   id: string;
+  name: string;
+  cost: string;
+  text: string;
+  hue: number;
+  counters: number;
   tapped: boolean;
   x: number; // normalized canvas position of the card centre (0..1)
   y: number;
@@ -82,6 +87,14 @@ function removeEverywhere(s: LabState, id: string): LabState {
     exile: without(s.exile),
   };
 }
+
+const labContent = (c: LabCard): CardContent => ({
+  name: c.name,
+  cost: c.cost,
+  description: c.text,
+  artHue: c.hue,
+  counters: c.counters > 0 ? [{ id: 'red', hex: '#e5484d', count: c.counters }] : [],
+});
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const ghostTransform = (p: Point, tapped: boolean) =>
@@ -374,14 +387,14 @@ export function GestureLab({ onBack }: { onBack: () => void }) {
             ),
           }}
         >
-          <CardView face={draggedCard} faceUp={drag.source.kind === 'card'} />
+          <CardView card={draggedCard && labContent(draggedCard)} faceUp={drag.source.kind === 'card'} />
         </div>
       )}
 
       {magnifiedCard && (
         <Modal className="scrim magnify-scrim" onClose={() => setMagnified(null)}>
           <div className="magnify-card">
-            <CardView face={magnifiedCard} />
+            <CardView card={labContent(magnifiedCard)} />
           </div>
         </Modal>
       )}
@@ -471,7 +484,7 @@ function TableCard({
       className={`table-card${dragging ? ' is-dragging' : ''}`}
       style={style}
     >
-      <CardView face={card} />
+      <CardView card={labContent(card)} />
     </div>
   );
 }

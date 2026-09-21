@@ -1,30 +1,78 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { formatBytes } from './platform';
 
+beforeAll(() => {
+  // jsdom lays nothing out; give elements a size so the virtualized card list renders rows.
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(
+    DOMRect.fromRect({ x: 0, y: 0, width: 1000, height: 800 }),
+  );
+  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(800);
+  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(1000);
+});
+
+async function renderApp() {
+  render(<App />);
+  await screen.findByRole('button', { name: 'Card Edit' }); // wait for the library to load
+}
+
 describe('App shell', () => {
-  it('shows the main menu with all four actions', () => {
-    render(<App />);
+  it('shows the main menu with all four actions', async () => {
+    await renderApp();
     for (const label of ['Playtest', 'Card Edit', 'Options', 'Reset Playtest']) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
     }
   });
 
-  it('asks for confirmation before resetting', () => {
-    render(<App />);
+  it('asks for confirmation before resetting', async () => {
+    await renderApp();
     fireEvent.click(screen.getByRole('button', { name: 'Reset Playtest' }));
     expect(screen.getByRole('alertdialog')).toHaveTextContent('Reset Playtest?');
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
 
-  it('navigates to Options and back', () => {
-    render(<App />);
+  it('navigates to Options and back', async () => {
+    await renderApp();
     fireEvent.click(screen.getByRole('button', { name: 'Options' }));
     expect(screen.getByRole('heading', { name: 'Options' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Back to menu' }));
     expect(screen.getByRole('button', { name: 'Card Edit' })).toBeInTheDocument();
+  });
+});
+
+describe('Card Edit', () => {
+  it('creates a card, edits it, and discards a new card without saving', async () => {
+    await renderApp();
+    fireEvent.click(screen.getByRole('button', { name: 'Card Edit' }));
+    expect(await screen.findByText('No cards yet.')).toBeInTheDocument();
+
+    // Create
+    fireEvent.click(screen.getAllByRole('button', { name: '+ New card' })[0]!);
+    let editor = screen.getByRole('dialog', { name: 'Edit card' });
+    fireEvent.change(within(editor).getByPlaceholderText('Card name'), { target: { value: 'Ember Scout' } });
+    fireEvent.change(within(editor).getByPlaceholderText('e.g. 3'), { target: { value: '2' } });
+    fireEvent.click(within(editor).getByRole('button', { name: 'Save' }));
+    const row = await screen.findByRole('button', { name: /Ember Scout/ });
+    expect(row).toHaveTextContent('2');
+
+    // Edit, then disable from the editor
+    fireEvent.click(row);
+    editor = screen.getByRole('dialog', { name: 'Edit card' });
+    fireEvent.change(within(editor).getByPlaceholderText('Card name'), { target: { value: 'Ember Scout II' } });
+    fireEvent.click(within(editor).getByRole('switch', { name: 'Enabled' }));
+    fireEvent.click(within(editor).getByRole('button', { name: 'Save' }));
+    expect(await screen.findByRole('button', { name: /Ember Scout II/ })).toHaveTextContent('Disabled');
+    expect(screen.getByRole('tab', { name: /Disabled/ })).toHaveTextContent('1');
+
+    // A new card discarded is never created
+    fireEvent.click(screen.getByRole('button', { name: '+ New card' }));
+    editor = screen.getByRole('dialog', { name: 'Edit card' });
+    fireEvent.click(within(editor).getByRole('button', { name: 'Discard' }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Discard' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /All/ })).toHaveTextContent('1');
   });
 });
 

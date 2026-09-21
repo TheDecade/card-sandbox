@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { CardEditScreen } from '../features/cardEdit/CardEditScreen';
 import { GestureLab } from '../features/playtest/GestureLab';
+import { useLibrary } from '../state/libraryStore';
 import { ConfirmDialog } from '../ui/Modal';
 import { UpdateToast } from './UpdateToast';
 import { formatBytes, isStandalone, requestPersistentStorage, type StorageStatus } from './platform';
@@ -11,10 +13,33 @@ export function App() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [storage, setStorage] = useState<StorageStatus | null>(null);
   const standalone = isStandalone();
+  const libraryStatus = useLibrary((s) => s.status);
+  const libraryError = useLibrary((s) => s.error);
 
   useEffect(() => {
     requestPersistentStorage().then(setStorage, () => setStorage(null));
+    void useLibrary.getState().load();
   }, []);
+
+  if (libraryStatus !== 'ready') {
+    return (
+      <div className="app">
+        <main className="menu">
+          {libraryStatus === 'loading' ? (
+            <p className="muted">Loading…</p>
+          ) : (
+            <>
+              <p>Your cards could not be loaded.</p>
+              <p className="muted">{libraryError}</p>
+              <button className="btn btn-big" onClick={() => void useLibrary.getState().load()}>
+                Try again
+              </button>
+            </>
+          )}
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -25,7 +50,7 @@ export function App() {
         <GestureLab onBack={() => setScreen('menu')} />
       )}
       {screen === 'cardEdit' && (
-        <Placeholder title="Card Edit" milestone="M3" onBack={() => setScreen('menu')} />
+        <CardEditScreen onBack={() => setScreen('menu')} />
       )}
       {screen === 'options' && (
         <Options storage={storage} standalone={standalone} onBack={() => setScreen('menu')} />
@@ -83,14 +108,6 @@ function ScreenHeader({ title, onBack }: { title: string; onBack: () => void }) 
   );
 }
 
-function Placeholder({ title, milestone, onBack }: { title: string; milestone: string; onBack: () => void }) {
-  return (
-    <main className="screen">
-      <ScreenHeader title={title} onBack={onBack} />
-      <p className="muted">Coming in milestone {milestone}.</p>
-    </main>
-  );
-}
 
 function Options({
   storage,

@@ -137,7 +137,7 @@ export function OptionsScreen({
         <p className="muted panel-note">
           {sharedDeck
             ? 'On: cards marked "Shared deck" go into one deck at the top right of every table, the same cards in the same order for all players. They never mix with the players\' own decks.'
-            : 'Off: cards marked "Shared deck" are shuffled into every player\'s deck like any other card.'}
+            : 'Off: cards marked "Shared deck" are left out of the game. They never go into the players\' own decks.'}
         </p>
         {playtestHasSharedDeck !== null && playtestHasSharedDeck !== sharedDeck && (
           <div className="option-row">

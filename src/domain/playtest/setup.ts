@@ -23,11 +23,14 @@ export interface SetupDeps {
   sharedDeck?: boolean;
 }
 
-/** Enabled, unbound cards, split into those for the players' decks and those for the shared deck. */
+/**
+ * Enabled, unbound cards, split into those for the players' decks and those for the shared deck.
+ * Shared-deck cards never go into the players' decks: with the shared deck off they are left out.
+ */
 const deckCards = (cards: readonly CardDefinition[], sharedDeck: boolean) => {
   const unbound = cards.filter((c) => c.enabled && c.boundPlayer === 0);
   return {
-    own: unbound.filter((c) => !(sharedDeck && c.shared)),
+    own: unbound.filter((c) => !c.shared),
     shared: sharedDeck ? unbound.filter((c) => c.shared) : [],
   };
 };
@@ -73,8 +76,8 @@ function boundInstance(def: CardDefinition, ownerId: PlayerId, position: Vec2, i
 }
 
 /**
- * A player's starting cards: one face-down copy of every enabled, unbound card (except shared-deck
- * cards when there is a shared deck), independently shuffled, plus the enabled cards bound to this player, face-up on their table.
+ * A player's starting cards: one face-down copy of every enabled, unbound, non-shared card,
+ * independently shuffled, plus the enabled cards bound to this player, face-up on their table.
  */
 export function createPlayer(
   playerId: PlayerId,

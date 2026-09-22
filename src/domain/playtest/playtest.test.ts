@@ -448,11 +448,11 @@ describe('shared deck', () => {
     expect(checkInvariants(s)).toEqual([]);
   });
 
-  it('treats shared cards as ordinary cards when the shared deck is off', () => {
+  it('leaves shared cards out of the game when the shared deck is off', () => {
     const s = withShared(2, false);
     expect(s.sharedDeck).toBeNull();
-    for (const p of s.players) expect(defsIn(s, p.zones.deck)).toEqual(['def1', 'def2', 'def3', 'def6', 'def7']);
-    expect(Object.values(s.instances).some((i) => i.shared)).toBe(false);
+    for (const p of s.players) expect(defsIn(s, p.zones.deck)).toEqual(['def1', 'def2', 'def3']);
+    expect(Object.values(s.instances).some((i) => i.definitionId === 'def6' || i.definitionId === 'def7')).toBe(false);
   });
 
   it('gives a card drawn from the shared deck to the player who drew it', () => {

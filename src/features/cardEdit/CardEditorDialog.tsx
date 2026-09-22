@@ -142,7 +142,7 @@ export function CardEditorDialog({
                   ? "Goes into each player's own deck"
                   : sharedDeckOn
                     ? 'Goes only into the shared deck'
-                    : "Goes only into the shared deck (off in Options, so for now into each player's deck)"}
+                    : 'Goes only into the shared deck (off in Options, so for now left out of the game)'}
               </span>
             </div>
 

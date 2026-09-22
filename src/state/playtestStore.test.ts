@@ -17,6 +17,7 @@ const CARDS: CardDefinition[] = [1, 2, 3].map((n) => ({
   imageId: null,
   enabled: true,
   boundPlayer: 0,
+  shared: false,
   createdAt: n,
   updatedAt: n,
 }));
@@ -39,16 +40,16 @@ describe('playtest store', () => {
   it('has no playtest until one is started', async () => {
     const { store } = await open();
     expect(store.getState().state).toBeNull();
-    store.getState().ensureStarted(CARDS, { playerCount: 2, countersPersist: true });
+    store.getState().ensureStarted(CARDS, { playerCount: 2, countersPersist: true, sharedDeck: false });
     const first = store.getState().state;
     expect(first?.players).toHaveLength(2);
-    store.getState().ensureStarted(CARDS, { playerCount: 3, countersPersist: true }); // already running: unchanged
+    store.getState().ensureStarted(CARDS, { playerCount: 3, countersPersist: true, sharedDeck: false }); // already running: unchanged
     expect(store.getState().state).toBe(first);
   });
 
   it('saves every change and restores it after reopening', async () => {
     const a = await open();
-    a.store.getState().ensureStarted(CARDS, { playerCount: 2, countersPersist: true });
+    a.store.getState().ensureStarted(CARDS, { playerCount: 2, countersPersist: true, sharedDeck: false });
     const s = a.store.getState().state!;
     const top = s.players[0]!.zones.deck[0]!;
     a.store.getState().dispatch({ type: 'moveCard', instanceId: top, to: { zone: 'canvas', position: { x: 0.3, y: 0.6 } } });
@@ -72,11 +73,12 @@ describe('playtest store', () => {
 
   it('reset rebuilds from the enabled cards and goes back to player 1', async () => {
     const { store, autosave } = await open();
-    store.getState().ensureStarted(CARDS, { playerCount: 2, countersPersist: true });
+    store.getState().ensureStarted(CARDS, { playerCount: 2, countersPersist: true, sharedDeck: false });
     store.getState().dispatch({ type: 'selectPlayer', playerId: 1 });
     store.getState().reset([...CARDS.slice(0, 2), { ...CARDS[2]!, enabled: false }], {
       playerCount: 3,
       countersPersist: false,
+      sharedDeck: false,
     });
     const s = store.getState().state!;
     expect(s.rules.countersPersist).toBe(false);

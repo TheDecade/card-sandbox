@@ -13,6 +13,7 @@ import {
   shuffleDeckCommand,
   shuffleSharedDeckCommand,
   syncBoundCardCommands,
+  tokenInstance,
 } from './setup';
 import { SHARED_OWNER, type PlaytestState } from './types';
 import { viewCard } from './visibility';
@@ -29,6 +30,7 @@ function card(n: number, enabled = true, shared = false, eventNumber = 1): CardD
     boundPlayer: 0,
     shared,
     eventNumber,
+    isToken: false,
     createdAt: n,
     updatedAt: n,
   };
@@ -538,10 +540,10 @@ describe('shared deck', () => {
       fc.record({ zone: fc.constant('canvas' as const), position: fc.record({ x: fc.double({ min: 0, max: 1, noNaN: true }), y: fc.constant(0.5) }) }),
       fc.record({ zone: fc.constant('hand' as const) }),
       fc.record({ zone: fc.constant('deck' as const), placement: fc.constantFrom('top' as const, 'bottom' as const) }),
-      fc.record({ zone: fc.constantFrom('graveyard' as const, 'exile' as const) }),
+      fc.record({ zone: fc.constantFrom('graveyard' as const, 'exile' as const, 'sharedZone' as const) }),
     );
     const stepArb = fc.oneof(
-      fc.record({ t: fc.constant('move' as const), i: fc.nat(), to: targetArb, p: fc.nat(3) }),
+      fc.record({ t: fc.constant('move' as const), i: fc.nat(), to: targetArb, p: fc.option(fc.nat(3), { nil: undefined }) }),
       fc.record({ t: fc.constant('players' as const), n: fc.integer({ min: 1, max: 3 }) }),
       fc.record({ t: fc.constant('shuffle' as const) }),
     );
@@ -614,5 +616,92 @@ describe('shared deck events', () => {
     const s1 = run(held, { type: 'refreshSharedDeck', instances: [b] }); // deck [b], a in hand
     const s = run(s1, refreshSharedDeckCommand(s1, cards, 1, { makeId: () => 'x', rand: noShuffle })!);
     expect(deckDefs(s)).toEqual(['e']);
+  });
+});
+
+describe('shared zone', () => {
+  const CARDS_SZ = [card(1), card(2), card(3), card(6, true, true, 1), card(7, true, true, 2)];
+  const game = () => createPlaytest(2, CARDS_SZ, { makeId: idMaker(), rand: noShuffle, sharedDeckEvents: 2 });
+  const toZone = (id: string): PlaytestCommand => ({ type: 'moveCard', instanceId: id, to: { zone: 'sharedZone' } });
+
+  it('holds face-up cards that keep their owner', () => {
+    const s0 = game();
+    const own = deckOf(s0, 1)[0]!;
+    const s = run(s0, toZone(own));
+    expect(s.sharedZone).toEqual([own]);
+    expect(s.instances[own]).toMatchObject({ zone: 'sharedZone', ownerId: 1, faceUp: true });
+    expect(checkInvariants(s)).toEqual([]);
+  });
+
+  it('only gives a card back to its owner; shared cards go to whoever takes them', () => {
+    const s0 = game();
+    const own = deckOf(s0, 1)[0]!;
+    const shared = s0.sharedDeck![0]!;
+    const s1 = run(s0, toZone(own), toZone(shared));
+    expect(s1.instances[shared]!.ownerId).toBe(SHARED_OWNER);
+    const refused = run(s1, { type: 'moveCard', instanceId: own, to: { zone: 'hand' }, playerId: 0 });
+    expect(refused).toBe(s1);
+    const s = run(
+      s1,
+      { type: 'moveCard', instanceId: own, to: { zone: 'hand' }, playerId: 1 },
+      { type: 'moveCard', instanceId: shared, to: { zone: 'hand' }, playerId: 0 },
+    );
+    expect(s.players[1]!.zones.hand).toEqual([own]);
+    expect(s.players[0]!.zones.hand).toEqual([shared]);
+    expect(checkInvariants(s)).toEqual([]);
+  });
+
+  it('holds at most four cards', () => {
+    const s0 = game();
+    const s = run(s0, ...deckOf(s0, 0).map(toZone), toZone(deckOf(s0, 1)[0]!), toZone(deckOf(s0, 1)[1]!));
+    expect(s.sharedZone).toHaveLength(4);
+    expect(checkInvariants(s)).toEqual([]);
+  });
+
+  it('discards the cards of removed players', () => {
+    const s0 = game();
+    const own = deckOf(s0, 1)[0]!;
+    const s = run(s0, toZone(own), { type: 'removePlayersFrom', playerId: 1 });
+    expect(s.sharedZone).toEqual([]);
+    expect(s.instances[own]).toBeUndefined();
+    expect(checkInvariants(s)).toEqual([]);
+  });
+});
+
+describe('tokens and table counters', () => {
+  const tokenCard = { ...card(9), isToken: true };
+
+  it('keeps token cards out of every deck', () => {
+    const s = createPlaytest(2, [...CARDS, tokenCard], { makeId: idMaker(), rand: noShuffle });
+    expect(Object.values(s.instances).some((i) => i.definitionId === tokenCard.id)).toBe(false);
+  });
+
+  it('creates tokens on the table that never go into a deck', () => {
+    const s0 = fresh();
+    const t = tokenInstance(0, { x: 0.5, y: 0.5 }, { definitionId: tokenCard.id }, 'tok');
+    const s1 = run(s0, { type: 'addInstance', instance: t });
+    expect(s1.players[0]!.zones.canvas).toEqual(['tok']);
+    expect(run(s1, { type: 'moveCard', instanceId: 'tok', to: { zone: 'deck', placement: 'top' } })).toBe(s1);
+    const s = run(s1, { type: 'moveCard', instanceId: 'tok', to: { zone: 'graveyard' } }, { type: 'removeInstance', instanceId: 'tok' });
+    expect(s.instances.tok).toBeUndefined();
+    expect(checkInvariants(s)).toEqual([]);
+  });
+
+  it('shows a custom token as a blank card with its text', () => {
+    const s = run(fresh(), { type: 'addInstance', instance: tokenInstance(0, { x: 0.5, y: 0.5 }, { text: 'Flying' }, 'c') });
+    const v = viewCard(s, () => undefined, 'c');
+    expect(v).toMatchObject({ kind: 'revealed', blank: true, token: true, def: { description: 'Flying' } });
+    expect(checkInvariants(s)).toEqual([]);
+  });
+
+  it('adds, moves (to the front) and removes counters on the table', () => {
+    const marker = (id: string) => ({ id, color: 'red', position: { x: 0.2, y: 0.2 } });
+    const s1 = run(fresh(), { type: 'addMarker', playerId: 0, marker: marker('a') }, { type: 'addMarker', playerId: 0, marker: marker('b') });
+    const s2 = run(s1, { type: 'moveMarker', playerId: 0, markerId: 'a', position: { x: 2, y: 0.7 } });
+    expect(s2.players[0]!.markers.map((m) => m.id)).toEqual(['b', 'a']);
+    expect(s2.players[0]!.markers[1]!.position).toEqual({ x: 1, y: 0.7 });
+    const s = run(s2, { type: 'removeMarker', playerId: 0, markerId: 'b' });
+    expect(s.players[0]!.markers.map((m) => m.id)).toEqual(['a']);
+    expect(s.players[1]!.markers).toEqual([]);
   });
 });

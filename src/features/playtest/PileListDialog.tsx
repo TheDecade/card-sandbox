@@ -32,8 +32,13 @@ export function PileListDialog({
   const destinations: { label: string; to: ZoneTarget }[] = [
     { label: 'Hand', to: { zone: 'hand' } },
     { label: 'Table', to: { zone: 'canvas', position: { x: 0.5, y: 0.5 } } },
-    { label: `Top of ${deck}`, to: { zone: 'deck', placement: 'top' } },
-    { label: `Bottom of ${deck}`, to: { zone: 'deck', placement: 'bottom' } },
+    // Tokens never go into a deck.
+    ...(movingCard?.kind === 'revealed' && movingCard.token
+      ? []
+      : [
+          { label: `Top of ${deck}`, to: { zone: 'deck', placement: 'top' } } as const,
+          { label: `Bottom of ${deck}`, to: { zone: 'deck', placement: 'bottom' } } as const,
+        ]),
     { label: PILE_LABEL[other], to: { zone: other } },
   ];
 

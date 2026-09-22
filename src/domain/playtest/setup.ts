@@ -23,7 +23,8 @@ export interface SetupDeps {
   sharedDeckEvents?: number;
 }
 
-const unbound = (cards: readonly CardDefinition[]) => cards.filter((c) => c.enabled && c.boundPlayer === 0);
+const unbound = (cards: readonly CardDefinition[]) =>
+  cards.filter((c) => c.enabled && c.boundPlayer === 0 && !c.isToken);
 /** Cards for the players' own decks. Shared-deck cards never go there, even with the shared deck off. */
 const ownDeckCards = (cards: readonly CardDefinition[]) => unbound(cards).filter((c) => !c.shared);
 /** Candidates for the shared deck, by event number (numbers above N are left out). */
@@ -56,7 +57,31 @@ const faceDown = (def: CardDefinition, ownerId: PlayerId, id: string, shared: bo
   counters: {},
   bound: false,
   shared,
+  token: false,
 });
+
+/** A token placed on a player's table: a copy of a token card, or a custom one with just a text. */
+export function tokenInstance(
+  ownerId: PlayerId,
+  position: Vec2,
+  from: { definitionId: string } | { text: string },
+  id: string = newId(),
+): CardInstance {
+  return {
+    id,
+    definitionId: 'definitionId' in from ? from.definitionId : '',
+    ownerId,
+    zone: 'canvas',
+    position,
+    faceUp: true,
+    tapped: false,
+    counters: {},
+    bound: false,
+    shared: false,
+    token: true,
+    ...('text' in from ? { tokenText: from.text } : {}),
+  };
+}
 
 /** Where bound cards are laid out when a playtest starts: a row across the table. */
 export const boundStartPosition = (index: number): Vec2 => ({
@@ -82,6 +107,7 @@ function boundInstance(def: CardDefinition, ownerId: PlayerId, position: Vec2, i
     counters: {},
     bound: true,
     shared: false,
+    token: false,
   };
 }
 
@@ -96,7 +122,7 @@ export function createPlayer(
 ): { player: PlayerState; instances: CardInstance[] } {
   const deck = ownDeckCards(cards).map((def) => faceDown(def, playerId, makeId(), false));
   const boundCards = cards
-    .filter((c) => c.enabled && c.boundPlayer === playerId + 1)
+    .filter((c) => c.enabled && !c.isToken && c.boundPlayer === playerId + 1)
     .map((def, i) => boundInstance(def, playerId, boundStartPosition(i), makeId()));
 
   const zones = emptyZones();
@@ -105,7 +131,7 @@ export function createPlayer(
     rand,
   );
   zones.canvas = boundCards.map((i) => i.id);
-  return { player: { id: playerId, zones, values: {} }, instances: [...deck, ...boundCards] };
+  return { player: { id: playerId, zones, values: {}, markers: [] }, instances: [...deck, ...boundCards] };
 }
 
 /**
@@ -129,7 +155,7 @@ export function syncBoundCardCommands(
   const added = new Map<PlayerId, number>(); // to fan out several cards arriving on one table
   for (const card of cards) {
     const copies = boundByDef.get(card.id) ?? [];
-    if (card.boundPlayer === 0) {
+    if (card.boundPlayer === 0 || card.isToken) {
       for (const c of copies) cmds.push({ type: 'unbindInstance', instanceId: c.id });
       continue;
     }
@@ -167,6 +193,7 @@ export function createPlaytest(
     players: created.map((c) => c.player),
     instances: Object.fromEntries([...created.flatMap((c) => c.instances), ...shared].map((i) => [i.id, i])),
     sharedDeck: events ? shared.map((i) => i.id) : null,
+    sharedZone: [],
     currentPlayer: 0,
   };
 }

@@ -9,10 +9,12 @@ export function DefinitionCard({
   card,
   variant = 'thumb',
   counters,
+  blank,
 }: {
   card: CardDefinition;
   variant?: ImageVariant;
   counters?: CardContent['counters'];
+  blank?: boolean;
 }) {
   const imageUrl = useImageUrl(card.imageId, variant);
   return (
@@ -25,6 +27,7 @@ export function DefinitionCard({
         imageUrl,
         artHue: hueFromString(card.id),
         counters,
+        blank,
       }}
     />
   );

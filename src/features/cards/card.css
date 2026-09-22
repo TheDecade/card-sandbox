@@ -11,6 +11,18 @@
   box-shadow: 0 2px 6px rgb(0 0 0 / 0.45);
 }
 
+/* Custom token: nothing but its text, centred. */
+.card-blank .card-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  font-size: calc(10cqw * var(--fit, 1)); /* the text is all there is: larger than on a full card */
+}
+.card-blank .card-counters {
+  z-index: 1;
+}
+
 .card-face {
   display: flex;
   flex-direction: column;

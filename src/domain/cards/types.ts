@@ -18,6 +18,8 @@ export interface CardDefinition {
   shared: boolean;
   /** Shared-deck cards: position in the shared deck (1 = top). One card per number is dealt. */
   eventNumber: number;
+  /** A token: in no deck; created on the table from the "Create token" list. Never shared or bound. */
+  isToken: boolean;
   createdAt: number;
   updatedAt: number;
   extra?: Record<string, unknown>; // room for future custom properties
@@ -35,6 +37,7 @@ export function newCardDefinition(now = Date.now()): CardDefinition {
     boundPlayer: 0,
     shared: false,
     eventNumber: 1,
+    isToken: false,
     createdAt: now,
     updatedAt: now,
   };
@@ -51,7 +54,8 @@ export function cardFieldsDiffer(a: CardDefinition, b: CardDefinition): boolean 
     a.enabled !== b.enabled ||
     a.boundPlayer !== b.boundPlayer ||
     a.shared !== b.shared ||
-    a.eventNumber !== b.eventNumber
+    a.eventNumber !== b.eventNumber ||
+    a.isToken !== b.isToken
   );
 }
 

@@ -153,6 +153,10 @@
   background: #b98a2e;
   color: #1d1d1b;
 }
+.row-tag-token {
+  background: #2d4f63;
+  color: #d7ecf7;
+}
 .stepper-small {
   gap: 8px;
 }

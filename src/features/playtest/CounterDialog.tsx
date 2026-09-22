@@ -94,6 +94,17 @@ export function CounterDialog({
           <button className="btn" onClick={onClose}>
             Cancel
           </button>
+          {card.token && (
+            <button
+              className="btn btn-danger"
+              onClick={() => {
+                dispatch({ type: 'removeInstance', instanceId: card.instanceId });
+                onClose();
+              }}
+            >
+              Remove Token
+            </button>
+          )}
           <button className="btn" disabled={current === 0} onClick={() => change(card.instanceId, -amount)}>
             Remove Counters
           </button>

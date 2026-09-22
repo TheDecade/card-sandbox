@@ -2,6 +2,7 @@ import { checkInvariants } from './invariants';
 import {
   emptyZones,
   SHARED_OWNER,
+  SHARED_ZONE_SIZE,
   ZONE_IDS,
   type CardInstance,
   type InstanceId,
@@ -40,7 +41,12 @@ export function repairPlaytest(s: PlaytestState): { state: PlaytestState; fixes:
   const fixes = checkInvariants(s).length;
   if (fixes === 0) return { state: s, fixes: 0 };
 
-  const players = s.players.map((p, index) => ({ id: index, zones: emptyZones(), values: { ...p.values } }));
+  const players = s.players.map((p, index) => ({
+    id: index,
+    zones: emptyZones(),
+    values: { ...p.values },
+    markers: [...p.markers],
+  }));
   const instances: Record<string, CardInstance> = {};
   const sharedDeck: InstanceId[] | null = s.sharedDeck ? [] : null;
   const toSharedDeck = (inst: CardInstance) => {
@@ -52,12 +58,22 @@ export function repairPlaytest(s: PlaytestState): { state: PlaytestState; fixes:
     const inst = s.instances[id];
     if (inst?.shared && !instances[id]) toSharedDeck(inst);
   }
+  const sharedZone: InstanceId[] = [];
+  for (const id of s.sharedZone) {
+    const inst = s.instances[id];
+    if (!inst || instances[id] || sharedZone.length >= SHARED_ZONE_SIZE) continue;
+    const shared = inst.shared && !!sharedDeck;
+    if (!shared && !players[inst.ownerId]) continue; // goes to a graveyard below
+    sharedZone.push(id);
+    instances[id] = { ...normalize(inst, shared ? SHARED_OWNER : inst.ownerId, 'sharedZone'), shared };
+  }
   s.players.forEach((p, index) => {
     for (const zone of ZONE_IDS) {
       for (const id of p.zones[zone] ?? []) {
         const inst = s.instances[id];
         if (!inst || instances[id]) continue;
         if (inst.shared && zone === 'deck' && sharedDeck) continue; // goes back to the shared deck below
+        if (inst.token && zone === 'deck') continue; // goes to the graveyard below
         players[index]!.zones[zone].push(id);
         // Without a shared deck, a shared card is an ordinary card of whoever holds it.
         instances[id] = { ...normalize(inst, index, zone), shared: inst.shared && !!sharedDeck };
@@ -77,5 +93,5 @@ export function repairPlaytest(s: PlaytestState): { state: PlaytestState; fixes:
   }
 
   const currentPlayer = s.currentPlayer >= 0 && s.currentPlayer < players.length ? s.currentPlayer : 0;
-  return { state: { ...s, players, instances, sharedDeck, currentPlayer }, fixes };
+  return { state: { ...s, players, instances, sharedDeck, sharedZone, currentPlayer }, fixes };
 }

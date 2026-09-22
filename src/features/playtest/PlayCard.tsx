@@ -41,7 +41,9 @@ export function VisibleCardView({ card, variant = 'thumb' }: { card: VisibleCard
   if (card.kind === 'missing') {
     return <CardView card={{ name: 'Missing card', cost: '', description: 'This card no longer exists.' }} />;
   }
-  return <DefinitionCard card={card.def} variant={variant} counters={counterBadges(card.counters)} />;
+  return (
+    <DefinitionCard card={card.def} variant={variant} counters={counterBadges(card.counters)} blank={card.blank} />
+  );
 }
 
 export interface CardActions {

@@ -13,6 +13,7 @@ export interface CardContent {
   imageUrl?: string | null;
   artHue?: number; // placeholder art color when there is no image
   counters?: { id: string; hex: string; count: number; label?: string }[];
+  blank?: boolean; // custom token: a plain card with nothing but its text
 }
 
 export function CardView({ card, faceUp = true }: { card?: CardContent; faceUp?: boolean }) {
@@ -31,6 +32,46 @@ function CardBack() {
 }
 
 function CardFace({ card }: { card: CardContent }) {
+  return card.blank ? <BlankFace card={card} /> : <FullFace card={card} />;
+}
+
+function Counters({ counters }: { counters: CardContent['counters'] }) {
+  if (!counters || counters.length === 0) return null;
+  return (
+    <div className="card-counters">
+      {counters.map((c) =>
+        c.label ? (
+          // Player counter: told apart by its label; the count sits in a small bubble.
+          <span key={c.id} className="counter counter-player" style={{ background: c.hex }}>
+            {c.label}
+            <span className="counter-count">{c.count}</span>
+          </span>
+        ) : (
+          <span key={c.id} className="counter" style={{ background: c.hex }}>
+            {c.count}
+          </span>
+        ),
+      )}
+    </div>
+  );
+}
+
+function BlankFace({ card }: { card: CardContent }) {
+  const textRef = useRef<HTMLDivElement>(null);
+  useFitText(textRef, card.description, { min: 0.5 });
+  return (
+    <div className="card card-blank" aria-label={card.name}>
+      <Counters counters={card.counters} />
+      <div className="card-face">
+        <div ref={textRef} className="card-text">
+          {card.description}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FullFace({ card }: { card: CardContent }) {
   const nameRef = useRef<HTMLSpanElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   // Long names and texts shrink to fit; text that still doesn't fit can be scrolled.
@@ -55,23 +96,7 @@ function CardFace({ card }: { card: CardContent }) {
           }
         >
           {card.imageUrl && <img src={card.imageUrl} alt="" draggable={false} />}
-          {card.counters && card.counters.length > 0 && (
-            <div className="card-counters">
-              {card.counters.map((c) =>
-                c.label ? (
-                  // Player counter: told apart by its label; the count sits in a small bubble.
-                  <span key={c.id} className="counter counter-player" style={{ background: c.hex }}>
-                    {c.label}
-                    <span className="counter-count">{c.count}</span>
-                  </span>
-                ) : (
-                  <span key={c.id} className="counter" style={{ background: c.hex }}>
-                    {c.count}
-                  </span>
-                ),
-              )}
-            </div>
-          )}
+          <Counters counters={card.counters} />
         </div>
         {card.type ? <div className="card-type">{card.type}</div> : null}
         <div ref={textRef} className="card-text">

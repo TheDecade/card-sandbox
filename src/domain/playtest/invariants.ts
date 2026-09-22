@@ -1,4 +1,4 @@
-import { SHARED_OWNER, ZONE_IDS, type PlaytestState } from './types';
+import { SHARED_OWNER, SHARED_ZONE_SIZE, ZONE_IDS, type PlaytestState } from './types';
 import { ZONE_RULES } from './zones';
 
 /** Consistency checks; returns human-readable violations (empty = healthy). */
@@ -25,6 +25,7 @@ export function checkInvariants(state: PlaytestState): string[] {
         if (inst.ownerId !== index) errors.push(`${id} owned by ${inst.ownerId} but in ${where}`);
         if (inst.zone !== zone) errors.push(`${id} says zone ${inst.zone} but is in ${where}`);
         if (inst.shared && zone === 'deck') errors.push(`shared card ${id} is in ${where}`);
+        if (inst.token && zone === 'deck') errors.push(`token ${id} is in ${where}`);
       }
     }
   });
@@ -39,8 +40,20 @@ export function checkInvariants(state: PlaytestState): string[] {
     }
   }
 
+  if (state.sharedZone.length > SHARED_ZONE_SIZE) errors.push('the shared zone holds too many cards');
+  for (const id of state.sharedZone) {
+    if (seen.has(id)) errors.push(`${id} is in both ${seen.get(id)} and the shared zone`);
+    seen.set(id, 'shared zone');
+    const inst = state.instances[id];
+    if (!inst) errors.push(`shared zone lists unknown instance ${id}`);
+    else if (inst.zone !== 'sharedZone') errors.push(`${id} says zone ${inst.zone} but is in the shared zone`);
+    else if (inst.shared !== (inst.ownerId === SHARED_OWNER)) errors.push(`${id} has the wrong owner in the shared zone`);
+    else if (!inst.shared && !state.players[inst.ownerId]) errors.push(`${id} in the shared zone has no owner`);
+  }
+
   for (const [id, inst] of Object.entries(state.instances)) {
     if (!seen.has(id)) errors.push(`${id} is in no zone`);
+    if (inst.tokenText !== undefined && !inst.token) errors.push(`${id} has token text but is no token`);
     if (inst.shared && !state.sharedDeck) errors.push(`${id} is a shared card but there is no shared deck`);
     const rule = ZONE_RULES[inst.zone];
     if ((inst.position !== null) !== rule.hasPosition) errors.push(`${id} position mismatch in ${inst.zone}`);

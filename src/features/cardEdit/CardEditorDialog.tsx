@@ -131,12 +131,25 @@ export function CardEditorDialog({
             </div>
 
             <div className="field field-row">
+              <span className="field-label">Token</span>
+              <Toggle
+                checked={draft.isToken}
+                label="Token"
+                // A token is in no deck, so it is neither shared nor bound.
+                onChange={(isToken) => update(isToken ? { isToken, shared: false, boundPlayer: 0 } : { isToken })}
+              />
+              <span className="muted field-hint">
+                {draft.isToken ? 'In no deck: double-tap the table to create it' : 'An ordinary card'}
+              </span>
+            </div>
+
+            <div className="field field-row">
               <span className="field-label">Shared deck</span>
               <Toggle
                 checked={draft.shared}
                 label="Shared deck"
                 // A card lives either in the shared deck or on one player's table, never both.
-                onChange={(shared) => update(shared ? { shared, boundPlayer: 0 } : { shared })}
+                onChange={(shared) => update(shared ? { shared, boundPlayer: 0, isToken: false } : { shared })}
               />
               <span className="muted field-hint">
                 {!draft.shared
@@ -196,15 +209,19 @@ export function CardEditorDialog({
                 <button
                   className="btn"
                   aria-label="Bind to next player"
-                  disabled={draft.shared || draft.boundPlayer >= Math.max(playerCount, draft.boundPlayer)}
+                  disabled={
+                    draft.shared || draft.isToken || draft.boundPlayer >= Math.max(playerCount, draft.boundPlayer)
+                  }
                   onClick={() => update({ boundPlayer: draft.boundPlayer + 1 })}
                 >
                   +
                 </button>
               </div>
               <span className="muted field-hint">
-                {draft.shared
-                  ? 'Shared-deck cards are not bound'
+                {draft.isToken
+                  ? 'Tokens are not bound'
+                  : draft.shared
+                    ? 'Shared-deck cards are not bound'
                   : draft.boundPlayer === 0
                     ? 'Shuffled into every deck'
                     : `Starts on Player ${draft.boundPlayer}'s table, not in the decks`}

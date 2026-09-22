@@ -1,6 +1,14 @@
 import { produce, type Draft } from 'immer';
 import type { PlaytestCommand, ZoneTarget } from './commands';
-import { SHARED_OWNER, ZONE_IDS, type InstanceId, type PlaytestState, type Vec2 } from './types';
+import {
+  SHARED_OWNER,
+  SHARED_ZONE_SIZE,
+  ZONE_IDS,
+  type CardInstance,
+  type InstanceId,
+  type PlaytestState,
+  type Vec2,
+} from './types';
 import { ZONE_RULES } from './zones';
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
@@ -89,6 +97,12 @@ export function applyCommand(state: PlaytestState, cmd: PlaytestCommand): Playte
             }
           }
         }
+        for (const id of [...draft.sharedZone]) {
+          const inst = draft.instances[id];
+          if (!inst || inst.ownerId < cmd.playerId) continue;
+          draft.sharedZone.splice(draft.sharedZone.indexOf(id), 1);
+          delete draft.instances[id];
+        }
         draft.players.splice(cmd.playerId);
         if (draft.currentPlayer >= draft.players.length) draft.currentPlayer = 0;
         break;
@@ -101,7 +115,7 @@ export function applyCommand(state: PlaytestState, cmd: PlaytestCommand): Playte
       case 'addInstance': {
         const inst = cmd.instance;
         const player = draft.players[inst.ownerId];
-        if (!player || draft.instances[inst.id]) return;
+        if (!player || draft.instances[inst.id] || inst.zone === 'sharedZone') return;
         draft.instances[inst.id] = { ...inst, counters: { ...inst.counters } };
         player.zones[inst.zone].push(inst.id);
         break;
@@ -110,7 +124,7 @@ export function applyCommand(state: PlaytestState, cmd: PlaytestCommand): Playte
       case 'removeInstance': {
         const inst = draft.instances[cmd.instanceId];
         if (!inst) return;
-        const zone = inst.ownerId === SHARED_OWNER ? draft.sharedDeck : draft.players[inst.ownerId]?.zones[inst.zone];
+        const zone = listOf(draft, inst);
         const at = zone?.indexOf(cmd.instanceId) ?? -1;
         if (zone && at >= 0) zone.splice(at, 1);
         delete draft.instances[cmd.instanceId];
@@ -120,6 +134,29 @@ export function applyCommand(state: PlaytestState, cmd: PlaytestCommand): Playte
       case 'unbindInstance': {
         const inst = draft.instances[cmd.instanceId];
         if (inst) inst.bound = false;
+        break;
+      }
+
+      case 'addMarker': {
+        const player = draft.players[cmd.playerId];
+        if (!player || player.markers.some((m) => m.id === cmd.marker.id)) return;
+        player.markers.push({ ...cmd.marker, position: clampPos(cmd.marker.position) });
+        break;
+      }
+
+      case 'moveMarker': {
+        const markers = draft.players[cmd.playerId]?.markers;
+        const at = markers?.findIndex((m) => m.id === cmd.markerId) ?? -1;
+        if (!markers || at < 0) return;
+        const [marker] = markers.splice(at, 1);
+        markers.push({ ...marker!, position: clampPos(cmd.position) });
+        break;
+      }
+
+      case 'removeMarker': {
+        const markers = draft.players[cmd.playerId]?.markers;
+        const at = markers?.findIndex((m) => m.id === cmd.markerId) ?? -1;
+        if (markers && at >= 0) markers.splice(at, 1);
         break;
       }
 
@@ -133,6 +170,13 @@ export function applyCommand(state: PlaytestState, cmd: PlaytestCommand): Playte
   });
 }
 
+/** The ordered list that holds a card: one of its owner's zones, the shared deck or the shared zone. */
+function listOf(draft: Draft<PlaytestState>, inst: CardInstance): InstanceId[] | undefined {
+  if (inst.zone === 'sharedZone') return draft.sharedZone;
+  if (inst.ownerId === SHARED_OWNER) return draft.sharedDeck ?? undefined;
+  return draft.players[inst.ownerId]?.zones[inst.zone];
+}
+
 function moveCard(draft: Draft<PlaytestState>, id: InstanceId, to: ZoneTarget, playerId?: number): void {
   const inst = draft.instances[id];
   if (!inst) return;
@@ -141,10 +185,24 @@ function moveCard(draft: Draft<PlaytestState>, id: InstanceId, to: ZoneTarget, p
     if (draft.sharedDeck) putInSharedDeck(draft, id, to.placement);
     return;
   }
-  const fromShared = inst.ownerId === SHARED_OWNER;
-  const from = fromShared ? draft.sharedDeck : draft.players[inst.ownerId]?.zones[inst.zone];
-  const player = draft.players[fromShared ? (playerId ?? draft.currentPlayer) : inst.ownerId];
-  if (!from || !player) return;
+  if (inst.token && to.zone === 'deck') return; // tokens only exist outside the decks
+  const unowned = inst.ownerId === SHARED_OWNER;
+  if (!unowned && playerId !== undefined && playerId !== inst.ownerId) return; // never to another player
+  const from = listOf(draft, inst);
+  if (!from) return;
+
+  let target: InstanceId[];
+  let ownerId: number;
+  if (to.zone === 'sharedZone') {
+    if (inst.zone !== 'sharedZone' && draft.sharedZone.length >= SHARED_ZONE_SIZE) return;
+    target = draft.sharedZone;
+    ownerId = inst.shared ? SHARED_OWNER : inst.ownerId;
+  } else {
+    ownerId = unowned ? (playerId ?? draft.currentPlayer) : inst.ownerId;
+    const player = draft.players[ownerId];
+    if (!player) return;
+    target = player.zones[to.zone];
+  }
 
   const zoneChanged = inst.zone !== to.zone;
 
@@ -153,8 +211,7 @@ function moveCard(draft: Draft<PlaytestState>, id: InstanceId, to: ZoneTarget, p
   if (at >= 0) from.splice(at, 1);
 
   // 2. Insert into the target zone.
-  inst.ownerId = player.id;
-  const target = player.zones[to.zone];
+  inst.ownerId = ownerId;
   if (to.zone === 'deck') {
     if (to.placement === 'top') target.unshift(id);
     else target.push(id);
@@ -178,7 +235,7 @@ function putInSharedDeck(draft: Draft<PlaytestState>, id: InstanceId, placement:
   const inst = draft.instances[id];
   const deck = draft.sharedDeck;
   if (!inst || !deck) return;
-  const from = inst.ownerId === SHARED_OWNER ? deck : draft.players[inst.ownerId]?.zones[inst.zone];
+  const from = listOf(draft, inst);
   const at = from?.indexOf(id) ?? -1;
   if (from && at >= 0) from.splice(at, 1);
   if (placement === 'top') deck.unshift(id);

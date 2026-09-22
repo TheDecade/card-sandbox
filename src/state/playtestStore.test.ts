@@ -19,6 +19,7 @@ const CARDS: CardDefinition[] = [1, 2, 3].map((n) => ({
   boundPlayer: 0,
   shared: false,
   eventNumber: 1,
+  isToken: false,
   createdAt: n,
   updatedAt: n,
 }));
@@ -96,7 +97,7 @@ describe('playtest store', () => {
     await new SandboxDB(dbName).kv.put({ key: 'playtest', value: { ...v1, players: oldPlayers, schemaVersion: 1 } });
     const { store, autosave } = await open();
     const s = store.getState().state!;
-    expect(s).toMatchObject({ schemaVersion: 5, rules: { countersPersist: true } });
+    expect(s).toMatchObject({ schemaVersion: 6, rules: { countersPersist: true } });
     expect(s.players.map((p) => p.values)).toEqual([{}, {}]);
     autosave.stop();
   });

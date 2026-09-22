@@ -20,6 +20,7 @@ export const cardDefinitionSchema = z.object({
   boundPlayer: z.number().int().min(0).default(0), // added later: older cards are unbound
   shared: z.boolean().default(false), // added later: older cards go into the players' decks
   eventNumber: z.number().int().min(1).default(1), // added later
+  isToken: z.boolean().default(false), // added later
   createdAt: z.number(),
   updatedAt: z.number(),
   extra: z.record(z.string(), z.unknown()).optional(),
@@ -44,7 +45,7 @@ export function parseSettings(raw: unknown): Settings {
   return parsed.success ? parsed.data : { ...DEFAULT_SETTINGS };
 }
 
-const zoneIdSchema = z.enum(['deck', 'hand', 'canvas', 'graveyard', 'exile']);
+const zoneIdSchema = z.enum(['deck', 'hand', 'canvas', 'graveyard', 'exile', 'sharedZone']);
 const vec2Schema = z.object({ x: z.number(), y: z.number() });
 const idList = z.array(z.string());
 
@@ -59,6 +60,7 @@ export const playtestSchema = z.object({
         id: z.number().int(),
         zones: z.object({ deck: idList, hand: idList, canvas: idList, graveyard: idList, exile: idList }),
         values: z.record(z.string(), z.number()).optional(), // added in v3
+        markers: z.array(z.object({ id: z.string(), color: z.string(), position: vec2Schema })).optional(), // v6
       }),
     )
     .min(1),
@@ -75,8 +77,11 @@ export const playtestSchema = z.object({
       counters: z.record(z.string(), z.number()),
       bound: z.boolean().default(false), // added in v4
       shared: z.boolean().default(false), // added in v5
+      token: z.boolean().default(false), // added in v6
+      tokenText: z.string().optional(), // added in v6
     }),
   ),
   sharedDeck: idList.nullable().default(null), // added in v5
+  sharedZone: idList.default([]), // added in v6
   currentPlayer: z.number().int(),
 });

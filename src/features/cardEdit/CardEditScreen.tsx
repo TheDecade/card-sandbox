@@ -163,6 +163,7 @@ function CardRow({
         <CostView cost={card.cost} className="row-cost-pips" />
         {card.boundPlayer > 0 && <span className="row-tag row-tag-bound">P{card.boundPlayer}</span>}
         {card.shared && <span className="row-tag row-tag-shared">Event {card.eventNumber}</span>}
+        {card.isToken && <span className="row-tag row-tag-token">Token</span>}
         {!card.enabled && <span className="row-tag">Disabled</span>}
       </button>
       <Toggle checked={card.enabled} label={`${displayName(card)} enabled`} onChange={onToggle} />

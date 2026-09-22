@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { CardDefinition, CardId } from '../../domain/cards/types';
 import type { PlaytestCommand, ZoneTarget } from '../../domain/playtest/commands';
-import type { InstanceId, PlaytestState, Vec2 } from '../../domain/playtest/types';
+import { SHARED_ZONE_SIZE, type InstanceId, type PlaytestState, type Vec2 } from '../../domain/playtest/types';
 import { viewCard, type VisibleCard } from '../../domain/playtest/visibility';
 import { useGestureConfig } from '../../gestures/config';
 import { useGestures } from '../../gestures/useGestures';
@@ -16,11 +16,12 @@ import { GestureSettings } from './GestureSettings';
 import { PileListDialog } from './PileListDialog';
 import { PlayerValuesDialog, PlayerValuesSlot } from './PlayerValues';
 import { PlayCard, VisibleCardView, type CardActions } from './PlayCard';
+import { AddToTableDialog, CanvasMarkerView, MARKER_SIZE, SharedZone } from './TableExtras';
 import { DeckZone, PileZone, type Pile } from './Zones';
 import { useCanvasZoom } from './useCanvasZoom';
 import './table.css';
 
-type DropTarget = 'canvas' | 'hand' | 'deck' | 'sharedDeck' | Pile;
+type DropTarget = 'canvas' | 'hand' | 'deck' | 'sharedDeck' | 'sharedZone' | Pile;
 type DragSource = { kind: 'deck' | 'sharedDeck' | 'card'; instanceId: InstanceId };
 interface Drag {
   id: number; // new ghost element per drag, so a finishing snap-back never affects the next drag
@@ -77,6 +78,8 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
 
   const [magnified, setMagnified] = useState<InstanceId | null>(null);
   const [counterFor, setCounterFor] = useState<InstanceId | null>(null);
+  const [addAt, setAddAt] = useState<Vec2 | null>(null); // double-tapped spot on the table
+  const [markerFor, setMarkerFor] = useState<string | null>(null);
   const [openPile, setOpenPile] = useState<Pile | null>(null);
   const [deckDrop, setDeckDrop] = useState<InstanceId | null>(null);
   const [dialog, setDialog] = useState<'deck' | 'sharedDeck' | 'menu' | 'gestures' | 'reset' | 'values' | null>(null);
@@ -154,6 +157,26 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
       snapBack();
       return;
     }
+    if (inst.token && (target === 'deck' || target === 'sharedDeck')) {
+      snapBack();
+      notify("Tokens can't go into a deck");
+      return;
+    }
+    if (target === 'sharedZone' && inst.zone === 'sharedZone') {
+      snapBack();
+      return;
+    }
+    if (target === 'sharedZone' && state.sharedZone.length >= SHARED_ZONE_SIZE) {
+      snapBack();
+      notify('The shared zone is full');
+      return;
+    }
+    // Cards never change hands: only the owner takes their card back from the shared zone.
+    if (inst.zone === 'sharedZone' && !inst.shared && inst.ownerId !== playerId) {
+      snapBack();
+      notify(`Only Player ${inst.ownerId + 1} can take this card back`);
+      return;
+    }
     // The two decks never mix.
     if ((target === 'deck' && inst.shared) || (target === 'sharedDeck' && !inst.shared)) {
       snapBack();
@@ -174,18 +197,26 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
           ? { type: 'moveOnCanvas', instanceId: id, position }
           : { type: 'moveCard', instanceId: id, to: { zone: 'canvas', position } };
     } else {
-      const to: ZoneTarget = target === 'hand' ? { zone: 'hand', index: handIndexAt(centre.x, id) } : { zone: target };
+      const to: ZoneTarget =
+        target === 'hand'
+          ? { zone: 'hand', index: handIndexAt(centre.x, id) }
+          : target === 'sharedZone'
+            ? { zone: 'sharedZone' }
+            : { zone: target };
       cmd = { type: 'moveCard', instanceId: id, to };
     }
-    if (cmd.type === 'moveCard' && d.source.kind === 'sharedDeck') cmd.playerId = playerId; // drawn by this player
+    // Taken from the shared deck or zone by this player.
+    if (cmd.type === 'moveCard' && (d.source.kind === 'sharedDeck' || inst.zone === 'sharedZone')) {
+      cmd.playerId = playerId;
+    }
     dispatch(cmd);
   }
 
-  function toCanvasPos(centre: Point, tapped: boolean): Vec2 {
+  function toCanvasPos(centre: Point, tapped: boolean, size?: { w: number; h: number }): Vec2 {
     const r = getDropZoneRect('canvas');
     if (!r) return { x: 0.5, y: 0.5 };
-    const w = cardWidth();
-    const h = (w * 88) / 63;
+    const w = size?.w ?? cardWidth();
+    const h = size?.h ?? (w * 88) / 63;
     const [halfW, halfH] = tapped ? [h / 2, w / 2] : [w / 2, h / 2];
     // Undo the canvas zoom: positions are fractions of the unzoomed table.
     const v = zoom.view.current;
@@ -205,7 +236,7 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
     return index;
   }
 
-  const cardActions = (id: InstanceId, where: 'canvas' | 'hand'): CardActions => ({
+  const cardActions = (id: InstanceId, where: 'canvas' | 'hand' | 'sharedZone'): CardActions => ({
     onTap: () => setMagnified(id),
     onDoubleTap: where === 'canvas' ? () => dispatch({ type: 'toggleTapped', instanceId: id }) : undefined,
     onLongPress: () => setCounterFor(id),
@@ -250,6 +281,10 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
   // Swiping sideways on an empty part of the table switches player (cards handle their own drags).
   const swipeStart = useRef<Point | null>(null);
   const canvasGestures = useGestures({
+    // Double-tap on an empty spot: add a counter or a token there.
+    onDoubleTap: ({ point }) => {
+      if (!zoom.pinched.current) setAddAt(toCanvasPos(point, false));
+    },
     onDragStart: ({ start }) => (swipeStart.current = zoom.pinched.current ? null : start),
     onDragEnd: (p) => {
       const start = swipeStart.current;
@@ -318,6 +353,19 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
                   />
                 );
               })}
+              {player.markers.map((m, i) => (
+                <CanvasMarkerView
+                  key={m.id}
+                  marker={m}
+                  zIndex={10_000 + i} // above every card
+                  getZoom={() => zoom.view.current.zoom}
+                  onTap={() => setMarkerFor(m.id)}
+                  onDrop={(p) => {
+                    if (hitTestDropZone(p) !== 'canvas') return; // off the table: it slides back
+                    dispatch({ type: 'moveMarker', playerId, markerId: m.id, position: toCanvasPos(p, false, MARKER_SIZE) });
+                  }}
+                />
+              ))}
               {Object.keys(state.instances).length === 0 && (
                 <p className="canvas-hint">
                   No enabled cards were in the list when this playtest started. Add cards in Card Edit, then
@@ -350,6 +398,11 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
 
         {state.sharedDeck && (
           <div className="corner corner-right">
+            <SharedZone
+              cards={state.sharedZone.map(view)}
+              actions={(id) => cardActions(id, 'sharedZone')}
+              draggedId={draggedId}
+            />
             <DeckZone
               zoneId="sharedDeck"
               label="Shared"
@@ -446,6 +499,27 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
             dispatch({ type: 'moveCard', instanceId: id, to });
           }}
           onClose={() => setOpenPile(null)}
+        />
+      )}
+      {addAt && (
+        <AddToTableDialog
+          playerId={playerId}
+          playerCount={playerCount}
+          position={addAt}
+          tokens={cards.filter((c) => c.isToken && c.enabled)}
+          onClose={() => setAddAt(null)}
+        />
+      )}
+      {markerFor && (
+        <ConfirmDialog
+          title="Remove this counter?"
+          message="It will be taken off the table."
+          confirmLabel="Remove"
+          onConfirm={() => {
+            dispatch({ type: 'removeMarker', playerId, markerId: markerFor });
+            setMarkerFor(null);
+          }}
+          onCancel={() => setMarkerFor(null)}
         />
       )}
       {counterFor && (

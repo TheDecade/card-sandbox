@@ -14,4 +14,5 @@ export const ZONE_RULES: Record<ZoneId, ZoneRule> = {
   canvas: { faceUp: true, keepsTapped: true, hasPosition: true },
   graveyard: { faceUp: true, keepsTapped: false, hasPosition: false },
   exile: { faceUp: true, keepsTapped: false, hasPosition: false },
+  sharedZone: { faceUp: true, keepsTapped: false, hasPosition: false },
 };

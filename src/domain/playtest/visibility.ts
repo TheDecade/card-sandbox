@@ -1,4 +1,4 @@
-import type { CardDefinition, CardId } from '../cards/types';
+import { newCardDefinition, type CardDefinition, type CardId } from '../cards/types';
 import type { CardInstance, InstanceId, PlaytestState } from './types';
 
 /**
@@ -13,6 +13,8 @@ export type VisibleCard =
       def: CardDefinition;
       tapped: boolean;
       shared: boolean;
+      token: boolean;
+      blank: boolean; // custom token: a plain card with just its text
       counters: CardInstance['counters'];
     }
   | { kind: 'missing'; instanceId: InstanceId }; // definition not found (should not happen)
@@ -25,7 +27,20 @@ export function viewCard(
   const inst = state.instances[instanceId];
   if (!inst) return { kind: 'missing', instanceId };
   if (!inst.faceUp) return { kind: 'hidden', instanceId };
-  const def = getDefinition(inst.definitionId);
+  const blank = inst.tokenText !== undefined;
+  const def = blank ? customTokenDefinition(inst.id, inst.tokenText!) : getDefinition(inst.definitionId);
   if (!def) return { kind: 'missing', instanceId };
-  return { kind: 'revealed', instanceId, def, tapped: inst.tapped, shared: inst.shared, counters: inst.counters };
+  const { tapped, shared, token, counters } = inst;
+  return { kind: 'revealed', instanceId, def, tapped, shared, token, blank, counters };
+}
+
+/** A stand-in card definition for a custom token, so it shows like any other card. */
+function customTokenDefinition(id: InstanceId, text: string): CardDefinition {
+  return {
+    ...newCardDefinition(0),
+    id: `token-${id}`,
+    name: 'Token',
+    description: text,
+    isToken: true,
+  };
 }

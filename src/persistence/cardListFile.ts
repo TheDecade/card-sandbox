@@ -17,6 +17,7 @@ const fileSchema = z.object({
       description: z.string().default(''),
       enabled: z.boolean().default(true),
       boundPlayer: z.number().int().min(0).default(0),
+      shared: z.boolean().default(false),
     }),
   ),
 });

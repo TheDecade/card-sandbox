@@ -27,11 +27,13 @@ export function PileListDialog({
   const newestFirst = [...cards].reverse();
   const movingCard = moving ? cards.find((c) => c.instanceId === moving) : undefined;
 
+  // A shared card's deck is the shared deck (the reducer sends it there).
+  const deck = movingCard?.kind === 'revealed' && movingCard.shared ? 'shared deck' : 'deck';
   const destinations: { label: string; to: ZoneTarget }[] = [
     { label: 'Hand', to: { zone: 'hand' } },
     { label: 'Table', to: { zone: 'canvas', position: { x: 0.5, y: 0.5 } } },
-    { label: 'Top of deck', to: { zone: 'deck', placement: 'top' } },
-    { label: 'Bottom of deck', to: { zone: 'deck', placement: 'bottom' } },
+    { label: `Top of ${deck}`, to: { zone: 'deck', placement: 'top' } },
+    { label: `Bottom of ${deck}`, to: { zone: 'deck', placement: 'bottom' } },
     { label: PILE_LABEL[other], to: { zone: other } },
   ];
 

@@ -5,7 +5,10 @@ import { useGestures } from '../../gestures/useGestures';
 import { CardView } from '../cards/CardView';
 import { offsetToCentre } from './PlayCard';
 
+/** A face-down deck: tap for its menu, drag to draw the top card. Also used for the shared deck. */
 export function DeckZone(props: {
+  zoneId?: 'deck' | 'sharedDeck';
+  label?: string;
   count: number;
   elRef: (el: HTMLDivElement | null) => void;
   onTap: () => void;
@@ -15,7 +18,9 @@ export function DeckZone(props: {
   onDragCancel: () => void;
 }) {
   const el = useRef<HTMLDivElement | null>(null);
-  const zone = useDropZone('deck', 2);
+  const zoneId = props.zoneId ?? 'deck';
+  const label = props.label ?? 'Deck';
+  const zone = useDropZone(zoneId, 2);
   const bind = useGestures({
     onTap: props.onTap,
     onDragStart:
@@ -32,9 +37,10 @@ export function DeckZone(props: {
         zone(node);
         props.elRef(node);
       }}
-      className={`deck drop-zone${props.count === 0 ? ' is-empty' : ''}`}
-      aria-label={`Deck, ${props.count} cards`}
+      className={`deck drop-zone${zoneId === 'sharedDeck' ? ' deck-shared' : ''}${props.count === 0 ? ' is-empty' : ''}`}
+      aria-label={`${label}, ${props.count} cards`}
     >
+      {zoneId === 'sharedDeck' && <span className="deck-label">{label}</span>}
       {props.count > 0 ? <CardView faceUp={false} /> : <span className="deck-empty">Empty</span>}
       <span className="badge">{props.count}</span>
     </div>

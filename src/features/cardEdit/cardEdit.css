@@ -149,6 +149,10 @@
   background: #2b313a;
   color: #dfe6ef;
 }
+.row-tag-shared {
+  background: #b98a2e;
+  color: #1d1d1b;
+}
 .stepper-small {
   gap: 8px;
 }

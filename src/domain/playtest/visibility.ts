@@ -12,6 +12,7 @@ export type VisibleCard =
       instanceId: InstanceId;
       def: CardDefinition;
       tapped: boolean;
+      shared: boolean;
       counters: CardInstance['counters'];
     }
   | { kind: 'missing'; instanceId: InstanceId }; // definition not found (should not happen)
@@ -26,5 +27,5 @@ export function viewCard(
   if (!inst.faceUp) return { kind: 'hidden', instanceId };
   const def = getDefinition(inst.definitionId);
   if (!def) return { kind: 'missing', instanceId };
-  return { kind: 'revealed', instanceId, def, tapped: inst.tapped, counters: inst.counters };
+  return { kind: 'revealed', instanceId, def, tapped: inst.tapped, shared: inst.shared, counters: inst.counters };
 }

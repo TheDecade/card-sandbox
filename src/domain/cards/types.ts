@@ -14,6 +14,8 @@ export interface CardDefinition {
   enabled: boolean; // only enabled cards go into newly built decks
   /** 0 = not bound. N = starts on Player N's table instead of in the decks. */
   boundPlayer: number;
+  /** Goes only into the shared deck (when the shared deck is on in Options). Never bound. */
+  shared: boolean;
   createdAt: number;
   updatedAt: number;
   extra?: Record<string, unknown>; // room for future custom properties
@@ -29,6 +31,7 @@ export function newCardDefinition(now = Date.now()): CardDefinition {
     imageId: null,
     enabled: true,
     boundPlayer: 0,
+    shared: false,
     createdAt: now,
     updatedAt: now,
   };
@@ -43,7 +46,8 @@ export function cardFieldsDiffer(a: CardDefinition, b: CardDefinition): boolean 
     a.description !== b.description ||
     a.imageId !== b.imageId ||
     a.enabled !== b.enabled ||
-    a.boundPlayer !== b.boundPlayer
+    a.boundPlayer !== b.boundPlayer ||
+    a.shared !== b.shared
   );
 }
 

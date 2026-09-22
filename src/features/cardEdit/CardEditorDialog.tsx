@@ -24,6 +24,7 @@ export function CardEditorDialog({
 }) {
   const saveCard = useLibrary((s) => s.saveCard);
   const playerCount = useLibrary((s) => s.settings.playerCount);
+  const sharedDeckOn = useLibrary((s) => s.settings.sharedDeck);
   const [draft, setDraft] = useState(initial);
   const [pickingImage, setPickingImage] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -129,6 +130,23 @@ export function CardEditorDialog({
             </div>
 
             <div className="field field-row">
+              <span className="field-label">Shared deck</span>
+              <Toggle
+                checked={draft.shared}
+                label="Shared deck"
+                // A card lives either in the shared deck or on one player's table, never both.
+                onChange={(shared) => update(shared ? { shared, boundPlayer: 0 } : { shared })}
+              />
+              <span className="muted field-hint">
+                {!draft.shared
+                  ? "Goes into each player's own deck"
+                  : sharedDeckOn
+                    ? 'Goes only into the shared deck'
+                    : "Goes only into the shared deck (off in Options, so for now into each player's deck)"}
+              </span>
+            </div>
+
+            <div className="field field-row">
               <span className="field-label">Bound to</span>
               <div className="stepper stepper-small">
                 <button
@@ -145,16 +163,18 @@ export function CardEditorDialog({
                 <button
                   className="btn"
                   aria-label="Bind to next player"
-                  disabled={draft.boundPlayer >= Math.max(playerCount, draft.boundPlayer)}
+                  disabled={draft.shared || draft.boundPlayer >= Math.max(playerCount, draft.boundPlayer)}
                   onClick={() => update({ boundPlayer: draft.boundPlayer + 1 })}
                 >
                   +
                 </button>
               </div>
               <span className="muted field-hint">
-                {draft.boundPlayer === 0
-                  ? 'Shuffled into every deck'
-                  : `Starts on Player ${draft.boundPlayer}'s table, not in the decks`}
+                {draft.shared
+                  ? 'Shared-deck cards are not bound'
+                  : draft.boundPlayer === 0
+                    ? 'Shuffled into every deck'
+                    : `Starts on Player ${draft.boundPlayer}'s table, not in the decks`}
               </span>
             </div>
 

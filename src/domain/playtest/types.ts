@@ -1,10 +1,12 @@
 import type { CardId } from '../cards/types';
 import type { CounterColorId } from '../counters/colors';
 
-export const PLAYTEST_SCHEMA_VERSION = 4; // 2: rules; 3: player values; 4: bound instances
+export const PLAYTEST_SCHEMA_VERSION = 5; // 2: rules; 3: player values; 4: bound instances; 5: shared deck
 
 export type InstanceId = string;
 export type PlayerId = number; // 0-based index; shown as "Player N+1"
+/** ownerId of a card lying in the shared deck: it belongs to no player until someone takes it. */
+export const SHARED_OWNER = -1;
 export type ZoneId = 'deck' | 'hand' | 'canvas' | 'graveyard' | 'exile';
 export const ZONE_IDS: readonly ZoneId[] = ['deck', 'hand', 'canvas', 'graveyard', 'exile'];
 
@@ -18,14 +20,16 @@ export interface Vec2 {
 export interface CardInstance {
   id: InstanceId;
   definitionId: CardId; // edits to the definition show up live on the table
-  ownerId: PlayerId;
-  zone: ZoneId; // mirrors which PlayerState.zones array holds it (kept in sync by the reducer)
+  ownerId: PlayerId; // SHARED_OWNER while in the shared deck
+  zone: ZoneId; // mirrors which PlayerState.zones array (or the shared deck) holds it
   position: Vec2 | null; // only on the canvas
   faceUp: boolean;
   tapped: boolean;
   counters: Partial<Record<CounterColorId, number>>;
   /** The copy of a player-bound card that belongs on its player's table (see CardDefinition.boundPlayer). */
   bound: boolean;
+  /** A card of the shared deck: its "deck" is always the shared deck, never a player's. */
+  shared: boolean;
 }
 
 export interface PlayerState {
@@ -53,6 +57,8 @@ export interface PlaytestState {
   rules: PlaytestRules;
   players: PlayerState[];
   instances: Record<InstanceId, CardInstance>;
+  /** One deck every player draws from ([0] = top), or null when this playtest has none. */
+  sharedDeck: InstanceId[] | null;
   currentPlayer: PlayerId;
 }
 

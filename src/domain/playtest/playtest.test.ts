@@ -5,11 +5,18 @@ import type { CardDefinition } from '../cards/types';
 import type { PlaytestCommand, ZoneTarget } from './commands';
 import { checkInvariants } from './invariants';
 import { applyCommand } from './reducer';
-import { createPlaytest, playerCountCommands, shuffleDeckCommand, syncBoundCardCommands } from './setup';
-import type { PlaytestState } from './types';
+import { repairPlaytest } from './repair';
+import {
+  createPlaytest,
+  playerCountCommands,
+  shuffleDeckCommand,
+  shuffleSharedDeckCommand,
+  syncBoundCardCommands,
+} from './setup';
+import { SHARED_OWNER, type PlaytestState } from './types';
 import { viewCard } from './visibility';
 
-function card(n: number, enabled = true): CardDefinition {
+function card(n: number, enabled = true, shared = false): CardDefinition {
   return {
     id: `def${n}`,
     name: `Card ${n}`,
@@ -19,6 +26,7 @@ function card(n: number, enabled = true): CardDefinition {
     imageId: null,
     enabled,
     boundPlayer: 0,
+    shared,
     createdAt: n,
     updatedAt: n,
   };
@@ -418,6 +426,138 @@ describe('fuzz: random command sequences keep the state consistent', () => {
             const owned = Object.values(s.instances).filter((i) => i.ownerId === p.id);
             expect(owned).toHaveLength(4);
           }
+        }
+      }),
+      { numRuns: 200 },
+    );
+  });
+});
+
+describe('shared deck', () => {
+  // Cards 1–3 go into every player's deck; 6 and 7 into the one shared deck.
+  const SHARED_CARDS = [card(1), card(2), card(3), card(6, true, true), card(7, true, true), card(8, false, true)];
+  const withShared = (players = 2, sharedDeck = true) =>
+    createPlaytest(players, SHARED_CARDS, { makeId: idMaker(), rand: noShuffle, sharedDeck });
+  const defsIn = (s: PlaytestState, ids: readonly string[]) => ids.map((id) => s.instances[id]!.definitionId).sort();
+
+  it('puts shared cards only in the shared deck, one copy for everyone', () => {
+    const s = withShared(3);
+    expect(defsIn(s, s.sharedDeck!)).toEqual(['def6', 'def7']); // card 8 is disabled
+    for (const p of s.players) expect(defsIn(s, p.zones.deck)).toEqual(['def1', 'def2', 'def3']);
+    for (const id of s.sharedDeck!) expect(s.instances[id]).toMatchObject({ ownerId: SHARED_OWNER, shared: true });
+    expect(checkInvariants(s)).toEqual([]);
+  });
+
+  it('treats shared cards as ordinary cards when the shared deck is off', () => {
+    const s = withShared(2, false);
+    expect(s.sharedDeck).toBeNull();
+    for (const p of s.players) expect(defsIn(s, p.zones.deck)).toEqual(['def1', 'def2', 'def3', 'def6', 'def7']);
+    expect(Object.values(s.instances).some((i) => i.shared)).toBe(false);
+  });
+
+  it('gives a card drawn from the shared deck to the player who drew it', () => {
+    const s0 = withShared(2);
+    const top = s0.sharedDeck![0]!;
+    const s = run(s0, { type: 'moveCard', instanceId: top, to: { zone: 'hand' }, playerId: 1 });
+    expect(s.sharedDeck).not.toContain(top);
+    expect(s.players[1]!.zones.hand).toEqual([top]);
+    expect(s.instances[top]).toMatchObject({ ownerId: 1, zone: 'hand', faceUp: true, shared: true });
+    expect(checkInvariants(s)).toEqual([]);
+  });
+
+  it('draws for the current player when no player is given', () => {
+    const s0 = run(withShared(2), { type: 'selectPlayer', playerId: 1 });
+    const top = s0.sharedDeck![0]!;
+    const s = run(s0, { type: 'moveCard', instanceId: top, to: { zone: 'graveyard' } });
+    expect(s.players[1]!.zones.graveyard).toEqual([top]);
+  });
+
+  it("never mixes the decks: a shared card's deck is the shared deck", () => {
+    const s0 = withShared(2);
+    const top = s0.sharedDeck![0]!;
+    const s1 = run(s0, { type: 'moveCard', instanceId: top, to: { zone: 'hand' }, playerId: 0 });
+    const s = run(s1, { type: 'moveCard', instanceId: top, to: { zone: 'deck', placement: 'bottom' } });
+    expect(s.players[0]!.zones.deck).not.toContain(top);
+    expect(s.sharedDeck!.at(-1)).toBe(top);
+    expect(s.instances[top]).toMatchObject({ ownerId: SHARED_OWNER, zone: 'deck', faceUp: false });
+    // An ordinary card sent to the deck goes to its owner's deck, never the shared one.
+    const own = s.players[0]!.zones.deck[0]!;
+    const s2 = run(s, { type: 'moveCard', instanceId: own, to: { zone: 'hand' } }, { type: 'moveCard', instanceId: own, to: { zone: 'deck', placement: 'top' } });
+    expect(s2.players[0]!.zones.deck[0]).toBe(own);
+    expect(s2.sharedDeck).not.toContain(own);
+    expect(checkInvariants(s2)).toEqual([]);
+  });
+
+  it('shuffles the shared deck', () => {
+    const s0 = withShared(2);
+    const s = run(s0, shuffleSharedDeckCommand(s0, () => 1));
+    expect([...s.sharedDeck!].sort()).toEqual([...s0.sharedDeck!].sort());
+    expect(run(s0, { type: 'setSharedDeckOrder', order: ['nope', 'nada'] })).toBe(s0);
+  });
+
+  it('returns shared cards held by removed players to the shared deck', () => {
+    const s0 = withShared(3);
+    const top = s0.sharedDeck![0]!;
+    const s1 = run(s0, { type: 'moveCard', instanceId: top, to: { zone: 'canvas', position: { x: 0.5, y: 0.5 } }, playerId: 2 });
+    const s = run(s1, { type: 'removePlayersFrom', playerId: 2 });
+    expect(s.sharedDeck!.at(-1)).toBe(top);
+    expect(s.instances[top]).toMatchObject({ ownerId: SHARED_OWNER, zone: 'deck', position: null });
+    expect(checkInvariants(s)).toEqual([]);
+  });
+
+  it('keeps the shared deck out of new players\' decks', () => {
+    const s0 = withShared(1);
+    const s = run(s0, ...playerCountCommands(s0, 2, SHARED_CARDS, { makeId: () => 'new' + Math.random() }));
+    expect(defsIn(s, s.players[1]!.zones.deck)).toEqual(['def1', 'def2', 'def3']);
+    expect(s.sharedDeck).toEqual(s0.sharedDeck);
+  });
+
+  it('repairs a shared card found in a player deck by putting it back in the shared deck', () => {
+    const s0 = withShared(2);
+    const top = s0.sharedDeck![0]!;
+    const broken: PlaytestState = {
+      ...s0,
+      sharedDeck: s0.sharedDeck!.slice(1),
+      players: s0.players.map((p, i) => (i === 0 ? { ...p, zones: { ...p.zones, deck: [...p.zones.deck, top] } } : p)),
+      instances: { ...s0.instances, [top]: { ...s0.instances[top]!, ownerId: 0 } },
+    };
+    expect(checkInvariants(broken)).not.toEqual([]);
+    const { state } = repairPlaytest(broken);
+    expect(checkInvariants(state)).toEqual([]);
+    expect(state.sharedDeck).toContain(top);
+  });
+
+  it('fuzz: random moves keep every card in exactly one place', () => {
+    const targetArb: fc.Arbitrary<ZoneTarget> = fc.oneof(
+      fc.record({ zone: fc.constant('canvas' as const), position: fc.record({ x: fc.double({ min: 0, max: 1, noNaN: true }), y: fc.constant(0.5) }) }),
+      fc.record({ zone: fc.constant('hand' as const) }),
+      fc.record({ zone: fc.constant('deck' as const), placement: fc.constantFrom('top' as const, 'bottom' as const) }),
+      fc.record({ zone: fc.constantFrom('graveyard' as const, 'exile' as const) }),
+    );
+    const stepArb = fc.oneof(
+      fc.record({ t: fc.constant('move' as const), i: fc.nat(), to: targetArb, p: fc.nat(3) }),
+      fc.record({ t: fc.constant('players' as const), n: fc.integer({ min: 1, max: 3 }) }),
+      fc.record({ t: fc.constant('shuffle' as const) }),
+    );
+    fc.assert(
+      fc.property(fc.array(stepArb, { maxLength: 40 }), (steps) => {
+        let s = withShared(2);
+        let n = 0;
+        for (const step of steps) {
+          const ids = Object.keys(s.instances);
+          let cmds: PlaytestCommand[];
+          if (step.t === 'move') {
+            const id = ids[step.i % ids.length]!;
+            cmds = [{ type: 'moveCard', instanceId: id, to: step.to, playerId: step.p }];
+          } else if (step.t === 'players') {
+            cmds = playerCountCommands(s, step.n, SHARED_CARDS, { makeId: () => `f${++n}` });
+          } else {
+            cmds = [shuffleSharedDeckCommand(s)];
+          }
+          s = run(s, ...cmds);
+          expect(checkInvariants(s)).toEqual([]);
+          // The two shared cards always exist exactly once.
+          expect(Object.values(s.instances).filter((i) => i.shared)).toHaveLength(2);
         }
       }),
       { numRuns: 200 },

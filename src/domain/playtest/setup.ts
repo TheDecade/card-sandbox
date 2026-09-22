@@ -6,6 +6,7 @@ import {
   DEFAULT_RULES,
   emptyZones,
   PLAYTEST_SCHEMA_VERSION,
+  SHARED_OWNER,
   type PlaytestRules,
   type Vec2,
   type CardInstance,
@@ -18,7 +19,31 @@ export interface SetupDeps {
   rand?: RandomInt;
   makeId?: () => string;
   rules?: PlaytestRules;
+  /** The playtest has a shared deck: cards marked "shared deck" go there instead of the players' decks. */
+  sharedDeck?: boolean;
 }
+
+/** Enabled, unbound cards, split into those for the players' decks and those for the shared deck. */
+const deckCards = (cards: readonly CardDefinition[], sharedDeck: boolean) => {
+  const unbound = cards.filter((c) => c.enabled && c.boundPlayer === 0);
+  return {
+    own: unbound.filter((c) => !(sharedDeck && c.shared)),
+    shared: sharedDeck ? unbound.filter((c) => c.shared) : [],
+  };
+};
+
+const faceDown = (def: CardDefinition, ownerId: PlayerId, id: string, shared: boolean): CardInstance => ({
+  id,
+  definitionId: def.id,
+  ownerId,
+  zone: 'deck',
+  position: null,
+  faceUp: false,
+  tapped: false,
+  counters: {},
+  bound: false,
+  shared,
+});
 
 /** Where bound cards are laid out when a playtest starts: a row across the table. */
 export const boundStartPosition = (index: number): Vec2 => ({
@@ -43,42 +68,31 @@ function boundInstance(def: CardDefinition, ownerId: PlayerId, position: Vec2, i
     tapped: false,
     counters: {},
     bound: true,
+    shared: false,
   };
 }
 
 /**
- * A player's starting cards: one face-down copy of every enabled, unbound card, independently
- * shuffled, plus the enabled cards bound to this player, face-up on their table.
+ * A player's starting cards: one face-down copy of every enabled, unbound card (except shared-deck
+ * cards when there is a shared deck), independently shuffled, plus the enabled cards bound to this player, face-up on their table.
  */
 export function createPlayer(
   playerId: PlayerId,
   cards: readonly CardDefinition[],
-  { rand = randomInt, makeId = newId }: SetupDeps = {},
+  { rand = randomInt, makeId = newId, sharedDeck = false }: SetupDeps = {},
 ): { player: PlayerState; instances: CardInstance[] } {
-  const deckCards: CardInstance[] = cards
-    .filter((c) => c.enabled && c.boundPlayer === 0)
-    .map((def) => ({
-      id: makeId(),
-      definitionId: def.id,
-      ownerId: playerId,
-      zone: 'deck',
-      position: null,
-      faceUp: false,
-      tapped: false,
-      counters: {},
-      bound: false,
-    }));
+  const deck = deckCards(cards, sharedDeck).own.map((def) => faceDown(def, playerId, makeId(), false));
   const boundCards = cards
     .filter((c) => c.enabled && c.boundPlayer === playerId + 1)
     .map((def, i) => boundInstance(def, playerId, boundStartPosition(i), makeId()));
 
   const zones = emptyZones();
   zones.deck = shuffled(
-    deckCards.map((i) => i.id),
+    deck.map((i) => i.id),
     rand,
   );
   zones.canvas = boundCards.map((i) => i.id);
-  return { player: { id: playerId, zones, values: {} }, instances: [...deckCards, ...boundCards] };
+  return { player: { id: playerId, zones, values: {} }, instances: [...deck, ...boundCards] };
 }
 
 /**
@@ -128,13 +142,21 @@ export function createPlaytest(
   deps: SetupDeps = {},
 ): PlaytestState {
   const created = Array.from({ length: playerCount }, (_, p) => createPlayer(p, cards, deps));
+  const makeId = deps.makeId ?? newId;
+  const shared = deckCards(cards, !!deps.sharedDeck).shared.map((def) => faceDown(def, SHARED_OWNER, makeId(), true));
   return {
     schemaVersion: PLAYTEST_SCHEMA_VERSION,
-    id: (deps.makeId ?? newId)(),
+    id: makeId(),
     createdAt: Date.now(),
     rules: { ...(deps.rules ?? DEFAULT_RULES) },
     players: created.map((c) => c.player),
-    instances: Object.fromEntries(created.flatMap((c) => c.instances).map((i) => [i.id, i])),
+    instances: Object.fromEntries([...created.flatMap((c) => c.instances), ...shared].map((i) => [i.id, i])),
+    sharedDeck: deps.sharedDeck
+      ? shuffled(
+          shared.map((i) => i.id),
+          deps.rand ?? randomInt,
+        )
+      : null,
     currentPlayer: 0,
   };
 }
@@ -147,6 +169,7 @@ export function playerCountCommands(
   deps: SetupDeps = {},
 ): PlaytestCommand[] {
   const current = state.players.length;
+  deps = { ...deps, sharedDeck: state.sharedDeck !== null };
   if (count < current) return [{ type: 'removePlayersFrom', playerId: count }];
   if (count > current) {
     const created = Array.from({ length: count - current }, (_, i) => createPlayer(current + i, cards, deps));
@@ -169,4 +192,9 @@ export function shuffleDeckCommand(
 ): PlaytestCommand {
   const deck = state.players[playerId]?.zones.deck ?? [];
   return { type: 'setDeckOrder', playerId, order: shuffled(deck, rand) };
+}
+
+/** Command that shuffles the remaining cards of the shared deck. */
+export function shuffleSharedDeckCommand(state: PlaytestState, rand: RandomInt = randomInt): PlaytestCommand {
+  return { type: 'setSharedDeckOrder', order: shuffled(state.sharedDeck ?? [], rand) };
 }

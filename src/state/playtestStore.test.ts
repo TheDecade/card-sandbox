@@ -92,7 +92,7 @@ describe('playtest store', () => {
     await new SandboxDB(dbName).kv.put({ key: 'playtest', value: { ...v1, players: oldPlayers, schemaVersion: 1 } });
     const { store, autosave } = await open();
     const s = store.getState().state!;
-    expect(s).toMatchObject({ schemaVersion: 4, rules: { countersPersist: true } });
+    expect(s).toMatchObject({ schemaVersion: 5, rules: { countersPersist: true } });
     expect(s.players.map((p) => p.values)).toEqual([{}, {}]);
     autosave.stop();
   });

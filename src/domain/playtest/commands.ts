@@ -13,11 +13,14 @@ export type ZoneTarget =
  * the basis for future undo/redo, replays and networked play.
  */
 export type PlaytestCommand =
-  | { type: 'moveCard'; instanceId: InstanceId; to: ZoneTarget } // within the owner's zones
+  // Within the owner's zones. A shared card's deck is the shared deck; one taken from the shared
+  // deck goes to playerId (default: the current player).
+  | { type: 'moveCard'; instanceId: InstanceId; to: ZoneTarget; playerId?: PlayerId }
   | { type: 'moveOnCanvas'; instanceId: InstanceId; position: Vec2 } // also brings to front
   | { type: 'toggleTapped'; instanceId: InstanceId }
   | { type: 'changeCounters'; instanceId: InstanceId; color: CounterColorId; delta: number }
   | { type: 'setDeckOrder'; playerId: PlayerId; order: InstanceId[] }
+  | { type: 'setSharedDeckOrder'; order: InstanceId[] }
   | { type: 'selectPlayer'; playerId: PlayerId }
   | { type: 'addPlayers'; players: PlayerState[]; instances: CardInstance[] }
   | { type: 'removePlayersFrom'; playerId: PlayerId }

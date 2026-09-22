@@ -86,7 +86,7 @@
   filter: drop-shadow(0 12px 18px rgb(0 0 0 / 0.5));
 }
 
-/* ---------- Deck, graveyard, exile (top-left) ---------- */
+/* ---------- Deck, graveyard, exile (top-left); shared deck (top-right) ---------- */
 .corner {
   position: absolute;
   top: 12px;
@@ -95,6 +95,29 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+.corner-right {
+  left: auto;
+  right: 24px;
+}
+.deck-label {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  z-index: 1;
+  transform: translateX(-50%);
+  padding: 1px 8px;
+  border-radius: 8px;
+  background: #b98a2e;
+  color: #1d1d1b;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.deck-shared .card {
+  filter: hue-rotate(160deg) saturate(1.3); /* tells it apart from the players' own decks */
 }
 .piles {
   display: flex;

@@ -14,6 +14,7 @@ export interface Settings {
   schemaVersion: number;
   playerCount: number;
   countersPersist: boolean; // counters stay on cards when they change zone
+  sharedDeck: boolean; // new playtests get a shared deck of the cards marked "shared deck"
   playerValues: PlayerValueDef[];
   lastBackupAt: number | null;
 }
@@ -22,6 +23,7 @@ export const DEFAULT_SETTINGS: Settings = {
   schemaVersion: SETTINGS_SCHEMA_VERSION,
   playerCount: 2,
   countersPersist: true,
+  sharedDeck: false,
   playerValues: [{ id: 'life', name: 'Life', start: 20 }],
   lastBackupAt: null,
 };

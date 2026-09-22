@@ -9,6 +9,7 @@ import {
   createPlaytest,
   playerCountCommands,
   shuffleDeckCommand,
+  shuffleSharedDeckCommand,
   syncBoundCardCommands,
 } from '../domain/playtest/setup';
 import type { PlayerId, PlaytestState } from '../domain/playtest/types';
@@ -28,15 +29,16 @@ export interface PlaytestStoreState {
   reset(cards: readonly CardDefinition[], settings: TableSettings): void;
   dispatch(cmd: PlaytestCommand): void;
   shuffleDeck(playerId: PlayerId): void;
+  shuffleSharedDeck(): void;
   /** Adds players with fresh decks, or removes the highest-numbered ones. */
   setPlayerCount(count: number, cards: readonly CardDefinition[]): void;
   /** Brings player-bound cards in line after cards were edited. */
   syncBoundCards(cards: readonly CardDefinition[]): void;
 }
 
-type TableSettings = Pick<Settings, 'playerCount' | 'countersPersist'>;
+type TableSettings = Pick<Settings, 'playerCount' | 'countersPersist' | 'sharedDeck'>;
 const newPlaytest = (cards: readonly CardDefinition[], s: TableSettings) =>
-  createPlaytest(s.playerCount, cards, { rules: { countersPersist: s.countersPersist } });
+  createPlaytest(s.playerCount, cards, { rules: { countersPersist: s.countersPersist }, sharedDeck: s.sharedDeck });
 
 export function createPlaytestStore(repos: Repositories) {
   return create<PlaytestStoreState>()((set, get) => ({
@@ -87,6 +89,11 @@ export function createPlaytestStore(repos: Repositories) {
     shuffleDeck(playerId) {
       const current = get().state;
       if (current) get().dispatch(shuffleDeckCommand(current, playerId));
+    },
+
+    shuffleSharedDeck() {
+      const current = get().state;
+      if (current) get().dispatch(shuffleSharedDeckCommand(current));
     },
 
     setPlayerCount(count, cards) {

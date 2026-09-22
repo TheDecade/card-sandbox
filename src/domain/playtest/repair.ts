@@ -1,5 +1,14 @@
 import { checkInvariants } from './invariants';
-import { emptyZones, ZONE_IDS, type CardInstance, type PlaytestState, type Vec2, type ZoneId } from './types';
+import {
+  emptyZones,
+  SHARED_OWNER,
+  ZONE_IDS,
+  type CardInstance,
+  type InstanceId,
+  type PlaytestState,
+  type Vec2,
+  type ZoneId,
+} from './types';
 import { ZONE_RULES } from './zones';
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, Number.isFinite(v) ? v : 0.5));
@@ -24,7 +33,8 @@ function normalize(inst: CardInstance, ownerId: number, zone: ZoneId): CardInsta
 
 /**
  * Makes a saved playtest consistent again instead of throwing it away: duplicate or unknown zone
- * entries are dropped, and cards that ended up in no zone go to their owner's graveyard.
+ * entries are dropped, and cards that ended up in no zone go to their owner's graveyard (shared
+ * cards: to the bottom of the shared deck).
  */
 export function repairPlaytest(s: PlaytestState): { state: PlaytestState; fixes: number } {
   const fixes = checkInvariants(s).length;
@@ -32,25 +42,40 @@ export function repairPlaytest(s: PlaytestState): { state: PlaytestState; fixes:
 
   const players = s.players.map((p, index) => ({ id: index, zones: emptyZones(), values: { ...p.values } }));
   const instances: Record<string, CardInstance> = {};
+  const sharedDeck: InstanceId[] | null = s.sharedDeck ? [] : null;
+  const toSharedDeck = (inst: CardInstance) => {
+    sharedDeck!.push(inst.id);
+    instances[inst.id] = { ...normalize(inst, SHARED_OWNER, 'deck'), shared: true };
+  };
 
+  for (const id of s.sharedDeck ?? []) {
+    const inst = s.instances[id];
+    if (inst?.shared && !instances[id]) toSharedDeck(inst);
+  }
   s.players.forEach((p, index) => {
     for (const zone of ZONE_IDS) {
       for (const id of p.zones[zone] ?? []) {
         const inst = s.instances[id];
         if (!inst || instances[id]) continue;
+        if (inst.shared && zone === 'deck' && sharedDeck) continue; // goes back to the shared deck below
         players[index]!.zones[zone].push(id);
-        instances[id] = normalize(inst, index, zone);
+        // Without a shared deck, a shared card is an ordinary card of whoever holds it.
+        instances[id] = { ...normalize(inst, index, zone), shared: inst.shared && !!sharedDeck };
       }
     }
   });
 
   for (const inst of Object.values(s.instances)) {
     if (instances[inst.id]) continue;
+    if (inst.shared && sharedDeck) {
+      toSharedDeck(inst);
+      continue;
+    }
     const owner = players[inst.ownerId] ? inst.ownerId : 0;
     players[owner]!.zones.graveyard.push(inst.id);
-    instances[inst.id] = normalize(inst, owner, 'graveyard');
+    instances[inst.id] = { ...normalize(inst, owner, 'graveyard'), shared: false };
   }
 
   const currentPlayer = s.currentPlayer >= 0 && s.currentPlayer < players.length ? s.currentPlayer : 0;
-  return { state: { ...s, players, instances, currentPlayer }, fixes };
+  return { state: { ...s, players, instances, sharedDeck, currentPlayer }, fixes };
 }

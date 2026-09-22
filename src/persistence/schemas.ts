@@ -17,6 +17,7 @@ export const cardDefinitionSchema = z.object({
   imageId: z.string().nullable(),
   enabled: z.boolean(),
   boundPlayer: z.number().int().min(0).default(0), // added later: older cards are unbound
+  shared: z.boolean().default(false), // added later: older cards go into the players' decks
   createdAt: z.number(),
   updatedAt: z.number(),
   extra: z.record(z.string(), z.unknown()).optional(),
@@ -26,6 +27,7 @@ export const settingsSchema = z.object({
   schemaVersion: z.number().int(),
   playerCount: z.number().int().min(MIN_PLAYERS).max(MAX_PLAYERS),
   countersPersist: z.boolean(),
+  sharedDeck: z.boolean(),
   playerValues: z
     .array(z.object({ id: z.string().min(1), name: z.string(), start: z.number().int() }))
     .max(MAX_PLAYER_VALUES),
@@ -62,14 +64,16 @@ export const playtestSchema = z.object({
     z.object({
       id: z.string(),
       definitionId: z.string(),
-      ownerId: z.number().int().min(0),
+      ownerId: z.number().int().min(-1), // -1: in the shared deck
       zone: zoneIdSchema,
       position: vec2Schema.nullable(),
       faceUp: z.boolean(),
       tapped: z.boolean(),
       counters: z.record(z.string(), z.number()),
       bound: z.boolean().default(false), // added in v4
+      shared: z.boolean().default(false), // added in v5
     }),
   ),
+  sharedDeck: idList.nullable().default(null), // added in v5
   currentPlayer: z.number().int(),
 });

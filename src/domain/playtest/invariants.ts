@@ -1,4 +1,4 @@
-import { ZONE_IDS, type PlaytestState } from './types';
+import { SHARED_OWNER, ZONE_IDS, type PlaytestState } from './types';
 import { ZONE_RULES } from './zones';
 
 /** Consistency checks; returns human-readable violations (empty = healthy). */
@@ -24,12 +24,24 @@ export function checkInvariants(state: PlaytestState): string[] {
         }
         if (inst.ownerId !== index) errors.push(`${id} owned by ${inst.ownerId} but in ${where}`);
         if (inst.zone !== zone) errors.push(`${id} says zone ${inst.zone} but is in ${where}`);
+        if (inst.shared && zone === 'deck') errors.push(`shared card ${id} is in ${where}`);
       }
     }
   });
 
+  for (const id of state.sharedDeck ?? []) {
+    if (seen.has(id)) errors.push(`${id} is in both ${seen.get(id)} and the shared deck`);
+    seen.set(id, 'shared deck');
+    const inst = state.instances[id];
+    if (!inst) errors.push(`shared deck lists unknown instance ${id}`);
+    else if (!inst.shared || inst.ownerId !== SHARED_OWNER || inst.zone !== 'deck') {
+      errors.push(`${id} is in the shared deck but is not a shared card lying there`);
+    }
+  }
+
   for (const [id, inst] of Object.entries(state.instances)) {
     if (!seen.has(id)) errors.push(`${id} is in no zone`);
+    if (inst.shared && !state.sharedDeck) errors.push(`${id} is a shared card but there is no shared deck`);
     const rule = ZONE_RULES[inst.zone];
     if ((inst.position !== null) !== rule.hasPosition) errors.push(`${id} position mismatch in ${inst.zone}`);
     if (inst.faceUp !== rule.faceUp) errors.push(`${id} face state wrong for ${inst.zone}`);

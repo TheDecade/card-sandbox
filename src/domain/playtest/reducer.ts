@@ -1,6 +1,6 @@
 import { produce, type Draft } from 'immer';
 import type { PlaytestCommand, ZoneTarget } from './commands';
-import type { InstanceId, PlaytestState, Vec2 } from './types';
+import { SHARED_OWNER, ZONE_IDS, type InstanceId, type PlaytestState, type Vec2 } from './types';
 import { ZONE_RULES } from './zones';
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
@@ -15,7 +15,7 @@ export function applyCommand(state: PlaytestState, cmd: PlaytestCommand): Playte
   return produce(state, (draft) => {
     switch (cmd.type) {
       case 'moveCard':
-        moveCard(draft, cmd.instanceId, cmd.to);
+        moveCard(draft, cmd.instanceId, cmd.to, cmd.playerId);
         break;
 
       case 'moveOnCanvas': {
@@ -49,6 +49,13 @@ export function applyCommand(state: PlaytestState, cmd: PlaytestCommand): Playte
         break;
       }
 
+      case 'setSharedDeckOrder': {
+        const deck = draft.sharedDeck;
+        if (!deck || !sameMembers(deck, cmd.order)) return;
+        deck.splice(0, deck.length, ...cmd.order);
+        break;
+      }
+
       case 'selectPlayer':
         if (cmd.playerId >= 0 && cmd.playerId < draft.players.length) draft.currentPlayer = cmd.playerId;
         break;
@@ -60,10 +67,17 @@ export function applyCommand(state: PlaytestState, cmd: PlaytestCommand): Playte
 
       case 'removePlayersFrom': {
         if (cmd.playerId < 1) return; // always keep at least one player
-        draft.players.splice(cmd.playerId);
-        for (const [id, inst] of Object.entries(draft.instances)) {
-          if (inst.ownerId >= cmd.playerId) delete draft.instances[id];
+        // Shared cards the removed players hold go back under the shared deck; the rest is discarded.
+        for (const player of draft.players.slice(cmd.playerId)) {
+          for (const zone of ZONE_IDS) {
+            for (const id of [...player.zones[zone]]) {
+              const inst = draft.instances[id];
+              if (inst?.shared && draft.sharedDeck) putInSharedDeck(draft, id, 'bottom');
+              else delete draft.instances[id];
+            }
+          }
         }
+        draft.players.splice(cmd.playerId);
         if (draft.currentPlayer >= draft.players.length) draft.currentPlayer = 0;
         break;
       }
@@ -84,7 +98,7 @@ export function applyCommand(state: PlaytestState, cmd: PlaytestCommand): Playte
       case 'removeInstance': {
         const inst = draft.instances[cmd.instanceId];
         if (!inst) return;
-        const zone = draft.players[inst.ownerId]?.zones[inst.zone];
+        const zone = inst.ownerId === SHARED_OWNER ? draft.sharedDeck : draft.players[inst.ownerId]?.zones[inst.zone];
         const at = zone?.indexOf(cmd.instanceId) ?? -1;
         if (zone && at >= 0) zone.splice(at, 1);
         delete draft.instances[cmd.instanceId];
@@ -107,19 +121,27 @@ export function applyCommand(state: PlaytestState, cmd: PlaytestCommand): Playte
   });
 }
 
-function moveCard(draft: Draft<PlaytestState>, id: InstanceId, to: ZoneTarget): void {
+function moveCard(draft: Draft<PlaytestState>, id: InstanceId, to: ZoneTarget, playerId?: number): void {
   const inst = draft.instances[id];
-  const player = inst && draft.players[inst.ownerId];
-  if (!inst || !player) return;
+  if (!inst) return;
+  if (inst.shared && to.zone === 'deck') {
+    // The decks never mix: a shared card's only deck is the shared one.
+    if (draft.sharedDeck) putInSharedDeck(draft, id, to.placement);
+    return;
+  }
+  const fromShared = inst.ownerId === SHARED_OWNER;
+  const from = fromShared ? draft.sharedDeck : draft.players[inst.ownerId]?.zones[inst.zone];
+  const player = draft.players[fromShared ? (playerId ?? draft.currentPlayer) : inst.ownerId];
+  if (!from || !player) return;
 
   const zoneChanged = inst.zone !== to.zone;
 
   // 1. Remove from the current zone.
-  const from = player.zones[inst.zone];
   const at = from.indexOf(id);
   if (at >= 0) from.splice(at, 1);
 
   // 2. Insert into the target zone.
+  inst.ownerId = player.id;
   const target = player.zones[to.zone];
   if (to.zone === 'deck') {
     if (to.placement === 'top') target.unshift(id);
@@ -137,6 +159,24 @@ function moveCard(draft: Draft<PlaytestState>, id: InstanceId, to: ZoneTarget): 
   inst.position = to.zone === 'canvas' ? clampPos(to.position) : null;
   if (!rule.keepsTapped) inst.tapped = false;
   if (zoneChanged && !draft.rules.countersPersist) inst.counters = {};
+}
+
+/** Moves a shared card (from wherever it is) onto the top or bottom of the shared deck. */
+function putInSharedDeck(draft: Draft<PlaytestState>, id: InstanceId, placement: 'top' | 'bottom'): void {
+  const inst = draft.instances[id];
+  const deck = draft.sharedDeck;
+  if (!inst || !deck) return;
+  const from = inst.ownerId === SHARED_OWNER ? deck : draft.players[inst.ownerId]?.zones[inst.zone];
+  const at = from?.indexOf(id) ?? -1;
+  if (from && at >= 0) from.splice(at, 1);
+  if (placement === 'top') deck.unshift(id);
+  else deck.push(id);
+  if (inst.zone !== 'deck' && !draft.rules.countersPersist) inst.counters = {};
+  inst.ownerId = SHARED_OWNER;
+  inst.zone = 'deck';
+  inst.faceUp = ZONE_RULES.deck.faceUp;
+  inst.position = null;
+  inst.tapped = false;
 }
 
 function bringToFront(draft: Draft<PlaytestState>, id: InstanceId): void {

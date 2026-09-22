@@ -5,6 +5,7 @@ import { useLibrary } from '../../state/libraryStore';
 import { usePlaytest } from '../../state/playtestStore';
 import { ConfirmDialog } from '../../ui/Modal';
 import { Toggle } from '../../ui/Toggle';
+import { ResetPlaytestDialog } from '../playtest/PlaytestScreen';
 import { BackupSection } from './BackupSection';
 import { PlayerValuesSection } from './PlayerValuesSection';
 
@@ -19,8 +20,11 @@ export function OptionsScreen({
 }) {
   const playerCount = useLibrary((s) => s.settings.playerCount);
   const countersPersist = useLibrary((s) => s.settings.countersPersist);
+  const sharedDeck = useLibrary((s) => s.settings.sharedDeck);
   const playtestPlayers = usePlaytest((s) => s.state?.players.length ?? null);
+  const playtestHasSharedDeck = usePlaytest((s) => (s.state ? s.state.sharedDeck !== null : null));
   const [confirmRemove, setConfirmRemove] = useState<number | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function apply(count: number) {
@@ -36,6 +40,15 @@ export function OptionsScreen({
     try {
       await useLibrary.getState().updateSettings({ countersPersist: on });
       usePlaytest.getState().dispatch({ type: 'setRules', rules: { countersPersist: on } });
+    } catch (e) {
+      setError(`Could not save: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  // Decks are built when a playtest starts, so the running one keeps its decks until it's reset.
+  async function setSharedDeck(on: boolean) {
+    try {
+      await useLibrary.getState().updateSettings({ sharedDeck: on });
     } catch (e) {
       setError(`Could not save: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -111,6 +124,34 @@ export function OptionsScreen({
         </p>
       </section>
 
+      <section className="panel">
+        <h3>Shared deck</h3>
+        <div className="option-row">
+          <span>One deck shared by all players</span>
+          <Toggle
+            checked={sharedDeck}
+            label="One deck shared by all players"
+            onChange={(on) => void setSharedDeck(on)}
+          />
+        </div>
+        <p className="muted panel-note">
+          {sharedDeck
+            ? 'On: cards marked "Shared deck" go into one deck at the top right of every table, the same cards in the same order for all players. They never mix with the players\' own decks.'
+            : 'Off: cards marked "Shared deck" are shuffled into every player\'s deck like any other card.'}
+        </p>
+        {playtestHasSharedDeck !== null && playtestHasSharedDeck !== sharedDeck && (
+          <div className="option-row">
+            <span className="muted">
+              The running playtest {playtestHasSharedDeck ? 'still has' : 'has no'} shared deck. Reset it to apply the
+              change.
+            </span>
+            <button className="btn btn-danger" onClick={() => setConfirmReset(true)}>
+              Reset Playtest
+            </button>
+          </div>
+        )}
+      </section>
+
       <BackupSection />
 
       <section className="panel">
@@ -137,7 +178,7 @@ export function OptionsScreen({
       {confirmRemove !== null && (
         <ConfirmDialog
           title={`Remove ${removed.map((n) => `Player ${n}`).join(' and ')}?`}
-          message={`Their deck, hand, table, graveyard and exile will be discarded. The other players are not affected.`}
+          message={`Their deck, hand, table, graveyard and exile will be discarded (shared-deck cards go back under the shared deck). The other players are not affected.`}
           confirmLabel="Remove"
           danger
           onConfirm={() => {
@@ -147,6 +188,7 @@ export function OptionsScreen({
           onCancel={() => setConfirmRemove(null)}
         />
       )}
+      {confirmReset && <ResetPlaytestDialog onDone={() => setConfirmReset(false)} />}
     </main>
   );
 }

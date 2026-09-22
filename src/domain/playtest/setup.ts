@@ -19,21 +19,31 @@ export interface SetupDeps {
   rand?: RandomInt;
   makeId?: () => string;
   rules?: PlaytestRules;
-  /** The playtest has a shared deck: cards marked "shared deck" go there instead of the players' decks. */
-  sharedDeck?: boolean;
+  /** N when the playtest has a shared deck: one card for each event number 1..N. Omitted: no shared deck. */
+  sharedDeckEvents?: number;
 }
 
-/**
- * Enabled, unbound cards, split into those for the players' decks and those for the shared deck.
- * Shared-deck cards never go into the players' decks: with the shared deck off they are left out.
- */
-const deckCards = (cards: readonly CardDefinition[], sharedDeck: boolean) => {
-  const unbound = cards.filter((c) => c.enabled && c.boundPlayer === 0);
-  return {
-    own: unbound.filter((c) => !c.shared),
-    shared: sharedDeck ? unbound.filter((c) => c.shared) : [],
-  };
-};
+const unbound = (cards: readonly CardDefinition[]) => cards.filter((c) => c.enabled && c.boundPlayer === 0);
+/** Cards for the players' own decks. Shared-deck cards never go there, even with the shared deck off. */
+const ownDeckCards = (cards: readonly CardDefinition[]) => unbound(cards).filter((c) => !c.shared);
+/** Candidates for the shared deck, by event number (numbers above N are left out). */
+function sharedCandidates(cards: readonly CardDefinition[], events: number): Map<number, CardDefinition[]> {
+  const byEvent = new Map<number, CardDefinition[]>();
+  for (const c of unbound(cards)) {
+    if (!c.shared || c.eventNumber < 1 || c.eventNumber > events) continue;
+    byEvent.set(c.eventNumber, [...(byEvent.get(c.eventNumber) ?? []), c]);
+  }
+  return byEvent;
+}
+const pick = <T>(items: readonly T[], rand: RandomInt): T | undefined => items[rand(items.length)];
+
+/** The shared deck's cards, top first: one random card per event number 1..N (numbers without cards are skipped). */
+function dealSharedDeck(cards: readonly CardDefinition[], events: number, rand: RandomInt): CardDefinition[] {
+  const byEvent = sharedCandidates(cards, events);
+  return Array.from({ length: events }, (_, i) => pick(byEvent.get(i + 1) ?? [], rand)).filter(
+    (c): c is CardDefinition => !!c,
+  );
+}
 
 const faceDown = (def: CardDefinition, ownerId: PlayerId, id: string, shared: boolean): CardInstance => ({
   id,
@@ -82,9 +92,9 @@ function boundInstance(def: CardDefinition, ownerId: PlayerId, position: Vec2, i
 export function createPlayer(
   playerId: PlayerId,
   cards: readonly CardDefinition[],
-  { rand = randomInt, makeId = newId, sharedDeck = false }: SetupDeps = {},
+  { rand = randomInt, makeId = newId }: SetupDeps = {},
 ): { player: PlayerState; instances: CardInstance[] } {
-  const deck = deckCards(cards, sharedDeck).own.map((def) => faceDown(def, playerId, makeId(), false));
+  const deck = ownDeckCards(cards).map((def) => faceDown(def, playerId, makeId(), false));
   const boundCards = cards
     .filter((c) => c.enabled && c.boundPlayer === playerId + 1)
     .map((def, i) => boundInstance(def, playerId, boundStartPosition(i), makeId()));
@@ -146,7 +156,9 @@ export function createPlaytest(
 ): PlaytestState {
   const created = Array.from({ length: playerCount }, (_, p) => createPlayer(p, cards, deps));
   const makeId = deps.makeId ?? newId;
-  const shared = deckCards(cards, !!deps.sharedDeck).shared.map((def) => faceDown(def, SHARED_OWNER, makeId(), true));
+  const rand = deps.rand ?? randomInt;
+  const events = deps.sharedDeckEvents;
+  const shared = events ? dealSharedDeck(cards, events, rand).map((def) => faceDown(def, SHARED_OWNER, makeId(), true)) : [];
   return {
     schemaVersion: PLAYTEST_SCHEMA_VERSION,
     id: makeId(),
@@ -154,12 +166,7 @@ export function createPlaytest(
     rules: { ...(deps.rules ?? DEFAULT_RULES) },
     players: created.map((c) => c.player),
     instances: Object.fromEntries([...created.flatMap((c) => c.instances), ...shared].map((i) => [i.id, i])),
-    sharedDeck: deps.sharedDeck
-      ? shuffled(
-          shared.map((i) => i.id),
-          deps.rand ?? randomInt,
-        )
-      : null,
+    sharedDeck: events ? shared.map((i) => i.id) : null,
     currentPlayer: 0,
   };
 }
@@ -172,7 +179,6 @@ export function playerCountCommands(
   deps: SetupDeps = {},
 ): PlaytestCommand[] {
   const current = state.players.length;
-  deps = { ...deps, sharedDeck: state.sharedDeck !== null };
   if (count < current) return [{ type: 'removePlayersFrom', playerId: count }];
   if (count > current) {
     const created = Array.from({ length: count - current }, (_, i) => createPlayer(current + i, cards, deps));
@@ -195,6 +201,43 @@ export function shuffleDeckCommand(
 ): PlaytestCommand {
   const deck = state.players[playerId]?.zones.deck ?? [];
   return { type: 'setDeckOrder', playerId, order: shuffled(deck, rand) };
+}
+
+/**
+ * Command that swaps every card still in the shared deck for another random card with the same event
+ * number, dealt in event order (1 on top). Cards the players hold are never dealt again, and a card
+ * only stays when its number has no other candidate.
+ */
+export function refreshSharedDeckCommand(
+  state: PlaytestState,
+  cards: readonly CardDefinition[],
+  events: number,
+  { rand = randomInt, makeId = newId }: SetupDeps = {},
+): PlaytestCommand | null {
+  const deck = state.sharedDeck;
+  if (!deck) return null;
+  const defs = new Map(cards.map((c) => [c.id, c]));
+  const current = new Map<number, Set<string>>(); // event number → cards now in the deck
+  for (const id of deck) {
+    const def = defs.get(state.instances[id]?.definitionId ?? '');
+    if (!def) continue;
+    current.set(def.eventNumber, (current.get(def.eventNumber) ?? new Set()).add(def.id));
+  }
+  const inDeck = new Set(deck);
+  const held = new Set(
+    Object.values(state.instances)
+      .filter((i) => i.shared && !inDeck.has(i.id))
+      .map((i) => i.definitionId),
+  );
+  const byEvent = sharedCandidates(cards, events);
+  const instances: CardInstance[] = [];
+  for (const n of [...current.keys()].sort((a, b) => a - b)) {
+    const free = (byEvent.get(n) ?? []).filter((c) => !held.has(c.id));
+    const others = free.filter((c) => !current.get(n)!.has(c.id));
+    const def = pick(others.length ? others : free, rand);
+    if (def) instances.push(faceDown(def, SHARED_OWNER, makeId(), true));
+  }
+  return { type: 'refreshSharedDeck', instances };
 }
 
 /** Command that shuffles the remaining cards of the shared deck. */

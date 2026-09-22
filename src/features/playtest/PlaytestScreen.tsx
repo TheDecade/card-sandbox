@@ -56,6 +56,7 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
   const dispatch = usePlaytest((s) => s.dispatch);
   const saveError = usePlaytest((s) => s.saveError);
   const valueDefs = useLibrary((s) => s.settings.playerValues);
+  const sharedDeckEvents = useLibrary((s) => s.settings.sharedDeckEvents);
 
   const defs = useMemo(() => new Map<CardId, CardDefinition>(cards.map((c) => [c.id, c])), [cards]);
   const view = (id: InstanceId): VisibleCard => viewCard(state, (d) => defs.get(d), id);
@@ -527,11 +528,22 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
             <h3>Shared deck</h3>
             <p>
               {state.sharedDeck.length} card{state.sharedDeck.length === 1 ? '' : 's'} left, the same for every
-              player.
+              player. Refresh swaps them for other cards with the same event numbers, in event order.
             </p>
             <div className="dialog-actions dialog-actions-stack">
               <button
                 className="btn btn-big btn-primary"
+                disabled={state.sharedDeck.length === 0}
+                onClick={() => {
+                  usePlaytest.getState().refreshSharedDeck(cards, sharedDeckEvents);
+                  setDialog(null);
+                  notify('Shared deck refreshed');
+                }}
+              >
+                Refresh Shared Deck
+              </button>
+              <button
+                className="btn btn-big"
                 disabled={state.sharedDeck.length < 2}
                 onClick={() => {
                   usePlaytest.getState().shuffleSharedDeck();

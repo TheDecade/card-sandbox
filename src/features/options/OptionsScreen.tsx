@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { formatBytes, type StorageStatus } from '../../app/platform';
-import { MAX_PLAYERS, MIN_PLAYERS } from '../../domain/settings/types';
+import { MAX_PLAYERS, MAX_SHARED_EVENTS, MIN_PLAYERS } from '../../domain/settings/types';
 import { useLibrary } from '../../state/libraryStore';
 import { usePlaytest } from '../../state/playtestStore';
 import { ConfirmDialog } from '../../ui/Modal';
@@ -21,6 +21,7 @@ export function OptionsScreen({
   const playerCount = useLibrary((s) => s.settings.playerCount);
   const countersPersist = useLibrary((s) => s.settings.countersPersist);
   const sharedDeck = useLibrary((s) => s.settings.sharedDeck);
+  const sharedDeckEvents = useLibrary((s) => s.settings.sharedDeckEvents);
   const playtestPlayers = usePlaytest((s) => s.state?.players.length ?? null);
   const playtestHasSharedDeck = usePlaytest((s) => (s.state ? s.state.sharedDeck !== null : null));
   const [confirmRemove, setConfirmRemove] = useState<number | null>(null);
@@ -46,9 +47,9 @@ export function OptionsScreen({
   }
 
   // Decks are built when a playtest starts, so the running one keeps its decks until it's reset.
-  async function setSharedDeck(on: boolean) {
+  async function setSharedDeck(patch: { sharedDeck?: boolean; sharedDeckEvents?: number }) {
     try {
-      await useLibrary.getState().updateSettings({ sharedDeck: on });
+      await useLibrary.getState().updateSettings(patch);
     } catch (e) {
       setError(`Could not save: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -131,12 +132,38 @@ export function OptionsScreen({
           <Toggle
             checked={sharedDeck}
             label="One deck shared by all players"
-            onChange={(on) => void setSharedDeck(on)}
+            onChange={(on) => void setSharedDeck({ sharedDeck: on })}
           />
         </div>
+        {sharedDeck && (
+          <div className="option-row">
+            <span>Events (cards in the shared deck)</span>
+            <div className="stepper stepper-small">
+              <button
+                className="btn"
+                aria-label="Fewer events"
+                disabled={sharedDeckEvents <= 1}
+                onClick={() => void setSharedDeck({ sharedDeckEvents: sharedDeckEvents - 1 })}
+              >
+                −
+              </button>
+              <output className="bound-value" aria-label="Number of events">
+                {sharedDeckEvents}
+              </output>
+              <button
+                className="btn"
+                aria-label="More events"
+                disabled={sharedDeckEvents >= MAX_SHARED_EVENTS}
+                onClick={() => void setSharedDeck({ sharedDeckEvents: sharedDeckEvents + 1 })}
+              >
+                +
+              </button>
+            </div>
+          </div>
+        )}
         <p className="muted panel-note">
           {sharedDeck
-            ? 'On: cards marked "Shared deck" go into one deck at the top right of every table, the same cards in the same order for all players. They never mix with the players\' own decks.'
+            ? `On: one deck at the top right of every table, the same for all players. For each event number from 1 (top) to ${sharedDeckEvents}, one random card marked "Shared deck" with that number is dealt; Refresh on the deck deals different ones. It never mixes with the players' own decks.`
             : 'Off: cards marked "Shared deck" are left out of the game. They never go into the players\' own decks.'}
         </p>
         {playtestHasSharedDeck !== null && playtestHasSharedDeck !== sharedDeck && (

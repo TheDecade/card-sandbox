@@ -25,6 +25,7 @@ export function CardEditorDialog({
   const saveCard = useLibrary((s) => s.saveCard);
   const playerCount = useLibrary((s) => s.settings.playerCount);
   const sharedDeckOn = useLibrary((s) => s.settings.sharedDeck);
+  const events = useLibrary((s) => s.settings.sharedDeckEvents);
   const [draft, setDraft] = useState(initial);
   const [pickingImage, setPickingImage] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -145,6 +146,38 @@ export function CardEditorDialog({
                     : 'Goes only into the shared deck (off in Options, so for now left out of the game)'}
               </span>
             </div>
+
+            {draft.shared && (
+              <div className="field field-row">
+                <span className="field-label">Event number</span>
+                <div className="stepper stepper-small">
+                  <button
+                    className="btn"
+                    aria-label="Earlier event"
+                    disabled={draft.eventNumber <= 1}
+                    onClick={() => update({ eventNumber: draft.eventNumber - 1 })}
+                  >
+                    −
+                  </button>
+                  <output className="bound-value" aria-label="Event number">
+                    {draft.eventNumber}
+                  </output>
+                  <button
+                    className="btn"
+                    aria-label="Later event"
+                    disabled={draft.eventNumber >= Math.max(events, draft.eventNumber)}
+                    onClick={() => update({ eventNumber: draft.eventNumber + 1 })}
+                  >
+                    +
+                  </button>
+                </div>
+                <span className="muted field-hint">
+                  {draft.eventNumber > events
+                    ? `Above the ${events} events set in Options: not dealt`
+                    : `Position ${draft.eventNumber} of ${events} in the shared deck (1 = top)`}
+                </span>
+              </div>
+            )}
 
             <div className="field field-row">
               <span className="field-label">Bound to</span>

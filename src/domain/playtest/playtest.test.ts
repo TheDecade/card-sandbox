@@ -9,6 +9,7 @@ import { repairPlaytest } from './repair';
 import {
   createPlaytest,
   playerCountCommands,
+  refreshSharedDeckCommand,
   shuffleDeckCommand,
   shuffleSharedDeckCommand,
   syncBoundCardCommands,
@@ -16,7 +17,7 @@ import {
 import { SHARED_OWNER, type PlaytestState } from './types';
 import { viewCard } from './visibility';
 
-function card(n: number, enabled = true, shared = false): CardDefinition {
+function card(n: number, enabled = true, shared = false, eventNumber = 1): CardDefinition {
   return {
     id: `def${n}`,
     name: `Card ${n}`,
@@ -27,6 +28,7 @@ function card(n: number, enabled = true, shared = false): CardDefinition {
     enabled,
     boundPlayer: 0,
     shared,
+    eventNumber,
     createdAt: n,
     updatedAt: n,
   };
@@ -434,10 +436,14 @@ describe('fuzz: random command sequences keep the state consistent', () => {
 });
 
 describe('shared deck', () => {
-  // Cards 1–3 go into every player's deck; 6 and 7 into the one shared deck.
-  const SHARED_CARDS = [card(1), card(2), card(3), card(6, true, true), card(7, true, true), card(8, false, true)];
+  // Cards 1–3 go into every player's deck; 6 (event 1) and 7 (event 2) into the one shared deck.
+  const SHARED_CARDS = [card(1), card(2), card(3), card(6, true, true, 1), card(7, true, true, 2), card(8, false, true)];
   const withShared = (players = 2, sharedDeck = true) =>
-    createPlaytest(players, SHARED_CARDS, { makeId: idMaker(), rand: noShuffle, sharedDeck });
+    createPlaytest(players, SHARED_CARDS, {
+      makeId: idMaker(),
+      rand: noShuffle,
+      sharedDeckEvents: sharedDeck ? 3 : undefined,
+    });
   const defsIn = (s: PlaytestState, ids: readonly string[]) => ids.map((id) => s.instances[id]!.definitionId).sort();
 
   it('puts shared cards only in the shared deck, one copy for everyone', () => {
@@ -562,5 +568,51 @@ describe('shared deck', () => {
       }),
       { numRuns: 200 },
     );
+  });
+});
+
+describe('shared deck events', () => {
+  // Event 1: a or b; event 2: c; event 3: d; event 4: nothing enabled; event 5: above N = 4.
+  const EVENTS = [
+    { ...card(11, true, true, 1), id: 'a' },
+    { ...card(12, true, true, 1), id: 'b' },
+    { ...card(13, true, true, 2), id: 'c' },
+    { ...card(14, true, true, 3), id: 'd' },
+    { ...card(15, false, true, 4), id: 'off' },
+    { ...card(16, true, true, 5), id: 'late' },
+    card(1),
+  ];
+  const deal = (rand: (max: number) => number = noShuffle) => createPlaytest(1, EVENTS, { makeId: idMaker(), rand, sharedDeckEvents: 4 });
+  const deckDefs = (s: PlaytestState) => s.sharedDeck!.map((id) => s.instances[id]!.definitionId);
+
+  it('deals one card per event number, in order with 1 on top', () => {
+    expect(deckDefs(deal())).toEqual(['a', 'c', 'd']);
+    expect(deckDefs(deal((n) => n - 1))).toEqual(['b', 'c', 'd']); // the other card for event 1
+  });
+
+  it('refreshes with other cards of the same event numbers, keeping the order', () => {
+    const s0 = deal();
+    const s = run(s0, refreshSharedDeckCommand(s0, EVENTS, 4, { makeId: () => `r${Math.random()}`, rand: noShuffle })!);
+    expect(deckDefs(s)).toEqual(['b', 'c', 'd']); // c and d have no alternative
+    for (const id of s0.sharedDeck!) expect(s.instances[id]).toBeUndefined();
+    expect(checkInvariants(s)).toEqual([]);
+  });
+
+  it('only refreshes the events still in the deck', () => {
+    const s0 = deal();
+    const s1 = run(s0, { type: 'moveCard', instanceId: s0.sharedDeck![0]!, to: { zone: 'hand' } });
+    const s = run(s1, refreshSharedDeckCommand(s1, EVENTS, 4, { makeId: () => `r${Math.random()}` })!);
+    expect(deckDefs(s)).toEqual(['c', 'd']);
+    expect(s.players[0]!.zones.hand).toEqual(s1.players[0]!.zones.hand);
+  });
+
+  it('never deals a card a player is holding', () => {
+    const cards = [...EVENTS, { ...card(17, true, true, 1), id: 'e' }];
+    const s0 = createPlaytest(1, cards, { makeId: idMaker(), rand: noShuffle, sharedDeckEvents: 1 }); // [a]
+    const held = run(s0, { type: 'moveCard', instanceId: s0.sharedDeck![0]!, to: { zone: 'hand' } });
+    const b = { ...s0.instances[s0.sharedDeck![0]!]!, id: 'b1', definitionId: 'b' };
+    const s1 = run(held, { type: 'refreshSharedDeck', instances: [b] }); // deck [b], a in hand
+    const s = run(s1, refreshSharedDeckCommand(s1, cards, 1, { makeId: () => 'x', rand: noShuffle })!);
+    expect(deckDefs(s)).toEqual(['e']);
   });
 });

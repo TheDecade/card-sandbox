@@ -21,6 +21,7 @@ export type PlaytestCommand =
   | { type: 'changeCounters'; instanceId: InstanceId; color: CounterColorId; delta: number }
   | { type: 'setDeckOrder'; playerId: PlayerId; order: InstanceId[] }
   | { type: 'setSharedDeckOrder'; order: InstanceId[] }
+  | { type: 'refreshSharedDeck'; instances: CardInstance[] } // replaces the shared deck's cards, top first
   | { type: 'selectPlayer'; playerId: PlayerId }
   | { type: 'addPlayers'; players: PlayerState[]; instances: CardInstance[] }
   | { type: 'removePlayersFrom'; playerId: PlayerId }

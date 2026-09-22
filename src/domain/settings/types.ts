@@ -2,6 +2,7 @@ export const SETTINGS_SCHEMA_VERSION = 1;
 export const MIN_PLAYERS = 1;
 export const MAX_PLAYERS = 4; // raising this is all it takes to support more players
 export const MAX_PLAYER_VALUES = 6; // what fits in the slot under the deck
+export const MAX_SHARED_EVENTS = 99;
 
 /** A value every player has, like life or poison. Defined in Options; each player has their own number. */
 export interface PlayerValueDef {
@@ -15,6 +16,7 @@ export interface Settings {
   playerCount: number;
   countersPersist: boolean; // counters stay on cards when they change zone
   sharedDeck: boolean; // new playtests get a shared deck of the cards marked "shared deck"
+  sharedDeckEvents: number; // N: the shared deck holds one card for each event number 1..N
   playerValues: PlayerValueDef[];
   lastBackupAt: number | null;
 }
@@ -24,6 +26,7 @@ export const DEFAULT_SETTINGS: Settings = {
   playerCount: 2,
   countersPersist: true,
   sharedDeck: false,
+  sharedDeckEvents: 10,
   playerValues: [{ id: 'life', name: 'Life', start: 20 }],
   lastBackupAt: null,
 };

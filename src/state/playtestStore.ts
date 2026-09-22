@@ -9,6 +9,7 @@ import {
   createPlaytest,
   playerCountCommands,
   shuffleDeckCommand,
+  refreshSharedDeckCommand,
   shuffleSharedDeckCommand,
   syncBoundCardCommands,
 } from '../domain/playtest/setup';
@@ -30,15 +31,20 @@ export interface PlaytestStoreState {
   dispatch(cmd: PlaytestCommand): void;
   shuffleDeck(playerId: PlayerId): void;
   shuffleSharedDeck(): void;
+  /** Deals new cards into the shared deck, one per event number still in it. */
+  refreshSharedDeck(cards: readonly CardDefinition[], events: number): void;
   /** Adds players with fresh decks, or removes the highest-numbered ones. */
   setPlayerCount(count: number, cards: readonly CardDefinition[]): void;
   /** Brings player-bound cards in line after cards were edited. */
   syncBoundCards(cards: readonly CardDefinition[]): void;
 }
 
-type TableSettings = Pick<Settings, 'playerCount' | 'countersPersist' | 'sharedDeck'>;
+type TableSettings = Pick<Settings, 'playerCount' | 'countersPersist' | 'sharedDeck' | 'sharedDeckEvents'>;
 const newPlaytest = (cards: readonly CardDefinition[], s: TableSettings) =>
-  createPlaytest(s.playerCount, cards, { rules: { countersPersist: s.countersPersist }, sharedDeck: s.sharedDeck });
+  createPlaytest(s.playerCount, cards, {
+    rules: { countersPersist: s.countersPersist },
+    sharedDeckEvents: s.sharedDeck ? s.sharedDeckEvents : undefined,
+  });
 
 export function createPlaytestStore(repos: Repositories) {
   return create<PlaytestStoreState>()((set, get) => ({
@@ -94,6 +100,12 @@ export function createPlaytestStore(repos: Repositories) {
     shuffleSharedDeck() {
       const current = get().state;
       if (current) get().dispatch(shuffleSharedDeckCommand(current));
+    },
+
+    refreshSharedDeck(cards, events) {
+      const current = get().state;
+      const cmd = current && refreshSharedDeckCommand(current, cards, events);
+      if (cmd) get().dispatch(cmd);
     },
 
     setPlayerCount(count, cards) {

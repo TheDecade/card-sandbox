@@ -56,6 +56,18 @@ export function applyCommand(state: PlaytestState, cmd: PlaytestCommand): Playte
         break;
       }
 
+      case 'refreshSharedDeck': {
+        const deck = draft.sharedDeck;
+        if (!deck) return;
+        const fresh = cmd.instances.filter(
+          (i) => i.shared && i.ownerId === SHARED_OWNER && i.zone === 'deck' && !draft.instances[i.id],
+        );
+        for (const id of deck) delete draft.instances[id];
+        for (const i of fresh) draft.instances[i.id] = { ...i, faceUp: false, position: null, tapped: false, counters: {} };
+        deck.splice(0, deck.length, ...fresh.map((i) => i.id));
+        break;
+      }
+
       case 'selectPlayer':
         if (cmd.playerId >= 0 && cmd.playerId < draft.players.length) draft.currentPlayer = cmd.playerId;
         break;

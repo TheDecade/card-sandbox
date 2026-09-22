@@ -16,6 +16,8 @@ export interface CardDefinition {
   boundPlayer: number;
   /** Goes only into the shared deck (when the shared deck is on in Options). Never bound. */
   shared: boolean;
+  /** Shared-deck cards: position in the shared deck (1 = top). One card per number is dealt. */
+  eventNumber: number;
   createdAt: number;
   updatedAt: number;
   extra?: Record<string, unknown>; // room for future custom properties
@@ -32,6 +34,7 @@ export function newCardDefinition(now = Date.now()): CardDefinition {
     enabled: true,
     boundPlayer: 0,
     shared: false,
+    eventNumber: 1,
     createdAt: now,
     updatedAt: now,
   };
@@ -47,7 +50,8 @@ export function cardFieldsDiffer(a: CardDefinition, b: CardDefinition): boolean 
     a.imageId !== b.imageId ||
     a.enabled !== b.enabled ||
     a.boundPlayer !== b.boundPlayer ||
-    a.shared !== b.shared
+    a.shared !== b.shared ||
+    a.eventNumber !== b.eventNumber
   );
 }
 

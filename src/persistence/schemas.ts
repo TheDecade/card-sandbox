@@ -4,6 +4,7 @@ import {
   DEFAULT_SETTINGS,
   MAX_PLAYER_VALUES,
   MAX_PLAYERS,
+  MAX_SHARED_EVENTS,
   MIN_PLAYERS,
   type Settings,
 } from '../domain/settings/types';
@@ -18,6 +19,7 @@ export const cardDefinitionSchema = z.object({
   enabled: z.boolean(),
   boundPlayer: z.number().int().min(0).default(0), // added later: older cards are unbound
   shared: z.boolean().default(false), // added later: older cards go into the players' decks
+  eventNumber: z.number().int().min(1).default(1), // added later
   createdAt: z.number(),
   updatedAt: z.number(),
   extra: z.record(z.string(), z.unknown()).optional(),
@@ -28,6 +30,7 @@ export const settingsSchema = z.object({
   playerCount: z.number().int().min(MIN_PLAYERS).max(MAX_PLAYERS),
   countersPersist: z.boolean(),
   sharedDeck: z.boolean(),
+  sharedDeckEvents: z.number().int().min(1).max(MAX_SHARED_EVENTS),
   playerValues: z
     .array(z.object({ id: z.string().min(1), name: z.string(), start: z.number().int() }))
     .max(MAX_PLAYER_VALUES),

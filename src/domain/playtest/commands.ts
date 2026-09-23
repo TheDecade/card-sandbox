@@ -30,10 +30,12 @@ export type PlaytestCommand =
   | { type: 'removePlayersFrom'; playerId: PlayerId }
   | { type: 'setRules'; rules: Partial<PlaytestRules> }
   | { type: 'setPlayerValue'; playerId: PlayerId; valueId: string; value: number }
-  // Player-bound cards changed mid-game:
+  // Cards whose starting table changed mid-game:
   | { type: 'addInstance'; instance: CardInstance } // placed in its zone (canvas: on top); also tokens
   | { type: 'removeInstance'; instanceId: InstanceId }
-  | { type: 'unbindInstance'; instanceId: InstanceId } // becomes an ordinary card where it is
+  | { type: 'clearStarter'; instanceId: InstanceId } // becomes an ordinary card where it is
+  // Handing a card to another player during the game: it lands on their table.
+  | { type: 'moveToPlayer'; instanceId: InstanceId; playerId: PlayerId; position: Vec2 }
   | { type: 'addMarker'; playerId: PlayerId; marker: CanvasMarker }
   | { type: 'moveMarker'; playerId: PlayerId; markerId: string; position: Vec2 } // also brings to front
   | { type: 'removeMarker'; playerId: PlayerId; markerId: string };

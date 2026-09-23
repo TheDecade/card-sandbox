@@ -33,8 +33,8 @@ export interface CardInstance {
   faceUp: boolean;
   tapped: boolean;
   counters: Partial<Record<CounterColorId, number>>;
-  /** The copy of a player-bound card that belongs on its player's table (see CardDefinition.boundPlayer). */
-  bound: boolean;
+  /** The copy placed on a table at the start (see CardDefinition.startingPlayer). It may move away. */
+  starter: boolean;
   /** A card of the shared deck: its "deck" is always the shared deck, never a player's. */
   shared: boolean;
   /** Created on the table (a token card, or a custom one); never goes into a deck. */

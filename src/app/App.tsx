@@ -30,7 +30,7 @@ export function App() {
     void usePlaytest.getState().load();
     // Editing a card's player binding mid-game updates the running playtest.
     const unsubscribe = useLibrary.subscribe((s, prev) => {
-      if (s.cards !== prev.cards && prev.status === 'ready') usePlaytest.getState().syncBoundCards(s.cards);
+      if (s.cards !== prev.cards && prev.status === 'ready') usePlaytest.getState().syncStartingCards(s.cards);
     });
     return () => {
       unsubscribe();

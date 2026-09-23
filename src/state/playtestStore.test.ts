@@ -17,7 +17,7 @@ const CARDS: CardDefinition[] = [1, 2, 3].map((n) => ({
   description: '',
   imageId: null,
   enabled: true,
-  boundPlayer: 0,
+  startingPlayer: 0,
   shared: false,
   eventNumber: 1,
   isToken: false,

@@ -23,14 +23,14 @@ export interface SetupDeps {
   sharedDeckEvents?: number;
 }
 
-const unbound = (cards: readonly CardDefinition[]) =>
-  cards.filter((c) => c.enabled && c.boundPlayer === 0 && !c.isToken);
+const dealt = (cards: readonly CardDefinition[]) =>
+  cards.filter((c) => c.enabled && c.startingPlayer === 0 && !c.isToken);
 /** Cards for the players' own decks. Shared-deck cards never go there, even with the shared deck off. */
-const ownDeckCards = (cards: readonly CardDefinition[]) => unbound(cards).filter((c) => !c.shared);
+const ownDeckCards = (cards: readonly CardDefinition[]) => dealt(cards).filter((c) => !c.shared);
 /** Candidates for the shared deck, by event number (numbers above N are left out). */
 function sharedCandidates(cards: readonly CardDefinition[], events: number): Map<number, CardDefinition[]> {
   const byEvent = new Map<number, CardDefinition[]>();
-  for (const c of unbound(cards)) {
+  for (const c of dealt(cards)) {
     if (!c.shared || c.eventNumber < 1 || c.eventNumber > events) continue;
     byEvent.set(c.eventNumber, [...(byEvent.get(c.eventNumber) ?? []), c]);
   }
@@ -55,7 +55,7 @@ const faceDown = (def: CardDefinition, ownerId: PlayerId, id: string, shared: bo
   faceUp: false,
   tapped: false,
   counters: {},
-  bound: false,
+  starter: false,
   shared,
   token: false,
 });
@@ -76,26 +76,26 @@ export function tokenInstance(
     faceUp: true,
     tapped: false,
     counters: {},
-    bound: false,
+    starter: false,
     shared: false,
     token: true,
     ...('text' in from ? { tokenText: from.text } : {}),
   };
 }
 
-/** Where bound cards are laid out when a playtest starts: a row across the table. */
-export const boundStartPosition = (index: number): Vec2 => ({
+/** Where the starting cards are laid out when a playtest starts: a row across the table. */
+export const startPosition = (index: number): Vec2 => ({
   x: 0.3 + (index % 6) * 0.11,
   y: 0.32 + Math.floor(index / 6) * 0.3,
 });
 
-/** Where a card bound mid-game appears: near the centre, fanned out so cards don't hide each other. */
-export const boundLatePosition = (canvasCount: number): Vec2 => {
+/** Where a card arriving mid-game appears: near the centre, fanned out so cards don't hide each other. */
+export const latePosition = (canvasCount: number): Vec2 => {
   const k = canvasCount % 6;
   return { x: 0.45 + k * 0.03, y: 0.45 + k * 0.03 };
 };
 
-function boundInstance(def: CardDefinition, ownerId: PlayerId, position: Vec2, id: string): CardInstance {
+function starterInstance(def: CardDefinition, ownerId: PlayerId, position: Vec2, id: string): CardInstance {
   return {
     id,
     definitionId: def.id,
@@ -105,15 +105,15 @@ function boundInstance(def: CardDefinition, ownerId: PlayerId, position: Vec2, i
     faceUp: true,
     tapped: false,
     counters: {},
-    bound: true,
+    starter: true,
     shared: false,
     token: false,
   };
 }
 
 /**
- * A player's starting cards: one face-down copy of every enabled, unbound, non-shared card,
- * independently shuffled, plus the enabled cards bound to this player, face-up on their table.
+ * A player's starting cards: one face-down copy of every enabled deck card, independently shuffled,
+ * plus the enabled cards whose starting table is this player's, face-up on it.
  */
 export function createPlayer(
   playerId: PlayerId,
@@ -121,54 +121,55 @@ export function createPlayer(
   { rand = randomInt, makeId = newId }: SetupDeps = {},
 ): { player: PlayerState; instances: CardInstance[] } {
   const deck = ownDeckCards(cards).map((def) => faceDown(def, playerId, makeId(), false));
-  const boundCards = cards
-    .filter((c) => c.enabled && !c.isToken && c.boundPlayer === playerId + 1)
-    .map((def, i) => boundInstance(def, playerId, boundStartPosition(i), makeId()));
+  const starterCards = cards
+    .filter((c) => c.enabled && !c.isToken && c.startingPlayer === playerId + 1)
+    .map((def, i) => starterInstance(def, playerId, startPosition(i), makeId()));
 
   const zones = emptyZones();
   zones.deck = shuffled(
     deck.map((i) => i.id),
     rand,
   );
-  zones.canvas = boundCards.map((i) => i.id);
-  return { player: { id: playerId, zones, values: {}, markers: [] }, instances: [...deck, ...boundCards] };
+  zones.canvas = starterCards.map((i) => i.id);
+  return { player: { id: playerId, zones, values: {}, markers: [] }, instances: [...deck, ...starterCards] };
 }
 
 /**
- * Commands that bring a running playtest in line with the cards' player bindings after cards were
- * edited: a bound card gets its copy on its player's table (moving it there from another player if
- * the binding changed); an unbound card's copy stays where it is as an ordinary card.
- * Disabled cards and copies already in decks or hands are left alone.
+ * Commands that bring a running playtest in line with the cards' starting tables after cards were
+ * edited: a card that gained a starting table and has no copy in the game yet gets one there; a card
+ * that lost it keeps its copy as an ordinary card. Copies already in play stay where they are — the
+ * starting table only says where a card begins, and players may hand it around afterwards.
  */
-export function syncBoundCardCommands(
+export function syncStartingCardsCommands(
   state: PlaytestState,
   cards: readonly CardDefinition[],
   makeId: () => string = newId,
 ): PlaytestCommand[] {
-  const boundByDef = new Map<string, CardInstance[]>();
+  const startersByDef = new Map<string, CardInstance[]>();
   for (const inst of Object.values(state.instances)) {
-    if (!inst.bound) continue;
-    boundByDef.set(inst.definitionId, [...(boundByDef.get(inst.definitionId) ?? []), inst]);
+    if (!inst.starter) continue;
+    startersByDef.set(inst.definitionId, [...(startersByDef.get(inst.definitionId) ?? []), inst]);
   }
 
   const cmds: PlaytestCommand[] = [];
   const added = new Map<PlayerId, number>(); // to fan out several cards arriving on one table
   for (const card of cards) {
-    const copies = boundByDef.get(card.id) ?? [];
-    if (card.boundPlayer === 0 || card.isToken) {
-      for (const c of copies) cmds.push({ type: 'unbindInstance', instanceId: c.id });
+    const copies = startersByDef.get(card.id) ?? [];
+    if (card.startingPlayer === 0 || card.isToken) {
+      for (const c of copies) cmds.push({ type: 'clearStarter', instanceId: c.id });
       continue;
     }
     if (!card.enabled) continue;
-    const owner = card.boundPlayer - 1;
-    const keep = copies.find((c) => c.ownerId === owner);
-    for (const c of copies) if (c !== keep) cmds.push({ type: 'removeInstance', instanceId: c.id });
+    const owner = card.startingPlayer - 1;
+    // A copy is already in the game, wherever it has been moved to: keep it, drop any duplicate.
+    const [keep, ...extra] = copies;
+    for (const c of extra) cmds.push({ type: 'removeInstance', instanceId: c.id });
     const player = state.players[owner];
     if (!keep && player) {
       const n = added.get(owner) ?? 0;
       added.set(owner, n + 1);
-      const position = boundLatePosition(player.zones.canvas.length + n);
-      cmds.push({ type: 'addInstance', instance: boundInstance(card, owner, position, makeId()) });
+      const position = latePosition(player.zones.canvas.length + n);
+      cmds.push({ type: 'addInstance', instance: starterInstance(card, owner, position, makeId()) });
     }
   }
   return cmds;

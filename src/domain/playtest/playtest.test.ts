@@ -12,7 +12,7 @@ import {
   refreshSharedDeckCommand,
   shuffleDeckCommand,
   shuffleSharedDeckCommand,
-  syncBoundCardCommands,
+  syncStartingCardsCommands,
   tokenInstance,
 } from './setup';
 import { SHARED_OWNER, type PlaytestState } from './types';
@@ -28,7 +28,7 @@ function card(n: number, enabled = true, shared = false, eventNumber = 1): CardD
     description: '',
     imageId: null,
     enabled,
-    boundPlayer: 0,
+    startingPlayer: 0,
     shared,
     eventNumber,
     isToken: false,
@@ -186,58 +186,63 @@ describe('counter persistence rule', () => {
   });
 });
 
-describe('player-bound cards', () => {
-  const bound = (n: number, player: number, enabled = true) => ({ ...card(n, enabled), boundPlayer: player });
+describe('cards that start on a table', () => {
+  const starts = (n: number, player: number, enabled = true) => ({ ...card(n, enabled), startingPlayer: player });
   const defsOn = (s: PlaytestState, p: number, zone: 'deck' | 'canvas') =>
     s.players[p]!.zones[zone].map((id) => s.instances[id]!.definitionId);
 
   it('start face-up on their player’s table and stay out of every deck', () => {
-    const cards = [card(1), card(2), bound(7, 2), bound(8, 2), bound(9, 1, false), bound(10, 4)];
+    const cards = [card(1), card(2), starts(7, 2), starts(8, 2), starts(9, 1, false), starts(10, 4)];
     const s = createPlaytest(2, cards, { makeId: idMaker(), rand: noShuffle });
     expect(defsOn(s, 0, 'canvas')).toEqual([]); // def9 is disabled
     expect(defsOn(s, 1, 'canvas')).toEqual(['def7', 'def8']);
     for (const p of [0, 1]) expect(defsOn(s, p, 'deck').sort()).toEqual(['def1', 'def2']);
     const onTable = s.players[1]!.zones.canvas.map((id) => s.instances[id]!);
-    expect(onTable.every((i) => i.bound && i.faceUp && i.position !== null)).toBe(true);
+    expect(onTable.every((i) => i.starter && i.faceUp && i.position !== null)).toBe(true);
     expect(onTable[0]!.position).not.toEqual(onTable[1]!.position);
     expect(checkInvariants(s)).toEqual([]);
-    // def10 is bound to Player 4, who isn't in this game: it sits out until that player is added.
+    // def10 starts on Player 4's table; they aren't in this game, so it sits out until they join.
     const s4 = run(s, ...playerCountCommands(s, 4, cards, { makeId: idMaker2() }));
     expect(defsOn(s4, 3, 'canvas')).toEqual(['def10']);
   });
 
-  it('mid-game: binding a card puts a copy on that player’s table', () => {
+  it('mid-game: giving a card a starting table puts a copy there', () => {
     const cards = [card(1), card(2)];
     const s0 = createPlaytest(2, cards, { makeId: idMaker(), rand: noShuffle });
-    const edited = [card(1), { ...card(2), boundPlayer: 2 }];
-    const s = run(s0, ...syncBoundCardCommands(s0, edited, idMaker2()));
+    const edited = [card(1), { ...card(2), startingPlayer: 2 }];
+    const s = run(s0, ...syncStartingCardsCommands(s0, edited, idMaker2()));
     expect(defsOn(s, 1, 'canvas')).toEqual(['def2']);
     expect(defsOn(s, 1, 'deck').sort()).toEqual(['def1', 'def2']); // existing copies left alone
     expect(checkInvariants(s)).toEqual([]);
-    expect(syncBoundCardCommands(s, edited)).toEqual([]); // already in line: nothing to do
+    expect(syncStartingCardsCommands(s, edited)).toEqual([]); // already in line: nothing to do
   });
 
-  it('mid-game: changing the player moves the bound copy; 0 leaves it as an ordinary card', () => {
-    const cards = [card(1), bound(2, 1)];
+  it('mid-game: the copy in play stays put, whatever the starting table says', () => {
+    const cards = [card(1), starts(2, 1)];
     const s0 = createPlaytest(2, cards, { makeId: idMaker(), rand: noShuffle });
     const [copy] = s0.players[0]!.zones.canvas;
-    const moved = run(s0, ...syncBoundCardCommands(s0, [card(1), bound(2, 2)], idMaker2()));
-    expect(moved.instances[copy!]).toBeUndefined();
-    expect(defsOn(moved, 0, 'canvas')).toEqual([]);
-    expect(defsOn(moved, 1, 'canvas')).toEqual(['def2']);
+    // Changing the starting table no longer moves the copy: it only says where a card begins.
+    const s1 = run(s0, ...syncStartingCardsCommands(s0, [card(1), starts(2, 2)], idMaker2()));
+    expect(defsOn(s1, 0, 'canvas')).toEqual(['def2']);
+    expect(defsOn(s1, 1, 'canvas')).toEqual([]);
 
-    const unbound = run(moved, ...syncBoundCardCommands(moved, [card(1), card(2)]));
-    const [kept] = unbound.players[1]!.zones.canvas;
-    expect(unbound.instances[kept!]).toMatchObject({ bound: false, zone: 'canvas' });
-    expect(checkInvariants(unbound)).toEqual([]);
+    // Handing it to Player 2 during the game does.
+    const handed = run(s1, { type: 'moveToPlayer', instanceId: copy!, playerId: 1, position: { x: 0.4, y: 0.4 } });
+    expect(defsOn(handed, 0, 'canvas')).toEqual([]);
+    expect(handed.instances[copy!]).toMatchObject({ ownerId: 1, zone: 'canvas', faceUp: true });
+    expect(checkInvariants(handed)).toEqual([]);
+
+    const cleared = run(handed, ...syncStartingCardsCommands(handed, [card(1), card(2)]));
+    expect(cleared.instances[copy!]).toMatchObject({ starter: false, zone: 'canvas', ownerId: 1 });
+    expect(checkInvariants(cleared)).toEqual([]);
   });
 
-  it('mid-game: a bound copy that was moved (e.g. to the graveyard) is not duplicated', () => {
-    const cards = [card(1), bound(2, 1)];
+  it('mid-game: a starting copy that was moved (e.g. to the graveyard) is not duplicated', () => {
+    const cards = [card(1), starts(2, 1)];
     const s0 = createPlaytest(1, cards, { makeId: idMaker(), rand: noShuffle });
     const [copy] = s0.players[0]!.zones.canvas;
     const s = run(s0, { type: 'moveCard', instanceId: copy!, to: { zone: 'graveyard' } });
-    expect(syncBoundCardCommands(s, cards)).toEqual([]);
+    expect(syncStartingCardsCommands(s, cards)).toEqual([]);
   });
 });
 

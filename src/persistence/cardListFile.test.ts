@@ -16,7 +16,7 @@ describe('parseCardListFile', () => {
     );
     expect(cards.map((c) => c.name)).toEqual(['Alpha', 'Beta ship', 'Bare']);
     expect(cards[1]).toMatchObject({ type: 'Fleet', cost: '{X}', description: 'line one 🧱\nline two' });
-    expect(cards[2]).toMatchObject({ type: '', cost: '', description: '', enabled: true, boundPlayer: 0, imageId: null });
+    expect(cards[2]).toMatchObject({ type: '', cost: '', description: '', enabled: true, startingPlayer: 0, imageId: null });
     expect(cards.map((c) => c.createdAt)).toEqual([1000, 1001, 1002]);
     expect(new Set(cards.map((c) => c.id)).size).toBe(3);
   });

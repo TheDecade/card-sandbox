@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { plainText } from '../../domain/cards/richText';
 import { displayName } from '../../domain/cards/types';
 import type { ZoneTarget } from '../../domain/playtest/commands';
 import type { InstanceId } from '../../domain/playtest/types';
@@ -63,7 +64,7 @@ export function PileListDialog({
                       <span className="row-name">
                         {card.kind === 'revealed' ? displayName(card.def) : 'Missing card'}
                       </span>
-                      <span className="row-desc">{card.kind === 'revealed' ? card.def.description : ''}</span>
+                      <span className="row-desc">{card.kind === 'revealed' ? plainText(card.def.description) : ''}</span>
                     </span>
                     {card.kind === 'revealed' && <CostView cost={card.def.cost} className="row-cost-pips" />}
                     {card.kind === 'revealed' &&

@@ -13,13 +13,13 @@ export interface CardDefinition {
   description: string;
   imageId: ImageId | null; // reference into the image library, never a copy
   enabled: boolean; // only enabled cards go into newly built decks
-  /** 0 = not bound. N = starts on Player N's table instead of in the decks. */
-  boundPlayer: number;
-  /** Goes only into the shared deck (when the shared deck is on in Options). Never bound. */
+  /** 0 = goes into the decks. N = starts on Player N's table; it can be moved away during play. */
+  startingPlayer: number;
+  /** Goes only into the shared deck (when the shared deck is on in Options). Has no starting table. */
   shared: boolean;
   /** Shared-deck cards: position in the shared deck (1 = top). One card per number is dealt. */
   eventNumber: number;
-  /** A token: in no deck; created on the table from the "Create token" list. Never shared or bound. */
+  /** A token: in no deck; created on the table from the "Create token" list. Never shared. */
   isToken: boolean;
   createdAt: number;
   updatedAt: number;
@@ -36,7 +36,7 @@ export function newCardDefinition(now = Date.now()): CardDefinition {
     description: '',
     imageId: null,
     enabled: true,
-    boundPlayer: 0,
+    startingPlayer: 0,
     shared: false,
     eventNumber: 1,
     isToken: false,
@@ -55,7 +55,7 @@ export function cardFieldsDiffer(a: CardDefinition, b: CardDefinition): boolean 
     a.description !== b.description ||
     a.imageId !== b.imageId ||
     a.enabled !== b.enabled ||
-    a.boundPlayer !== b.boundPlayer ||
+    a.startingPlayer !== b.startingPlayer ||
     a.shared !== b.shared ||
     a.eventNumber !== b.eventNumber ||
     a.isToken !== b.isToken

@@ -1,5 +1,6 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useMemo, useRef, useState } from 'react';
+import { plainText } from '../../domain/cards/richText';
 import { displayName, newCardDefinition, type CardDefinition } from '../../domain/cards/types';
 import { useImageUrl } from '../../images/useImageUrl';
 import { useLibrary } from '../../state/libraryStore';
@@ -160,10 +161,12 @@ function CardRow({
               <span className="row-type"> · {[card.type, card.subtype].filter(Boolean).join(' - ')}</span>
             )}
           </span>
-          <span className="row-desc">{card.description || '—'}</span>
+          <span className="row-desc">{plainText(card.description) || '—'}</span>
         </span>
         <CostView cost={card.cost} className="row-cost-pips" />
-        {card.boundPlayer > 0 && <span className="row-tag row-tag-bound">P{card.boundPlayer}</span>}
+        {card.startingPlayer > 0 && (
+          <span className="row-tag row-tag-bound">Starts P{card.startingPlayer}</span>
+        )}
         {card.shared && <span className="row-tag row-tag-shared">Event {card.eventNumber}</span>}
         {card.isToken && <span className="row-tag row-tag-token">Token</span>}
         {!card.enabled && <span className="row-tag">Disabled</span>}

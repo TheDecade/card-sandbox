@@ -11,7 +11,7 @@ import {
   shuffleDeckCommand,
   refreshSharedDeckCommand,
   shuffleSharedDeckCommand,
-  syncBoundCardCommands,
+  syncStartingCardsCommands,
 } from '../domain/playtest/setup';
 import type { PlayerId, PlaytestState } from '../domain/playtest/types';
 import { repos as defaultRepos, type Repositories } from '../persistence/repositories';
@@ -36,7 +36,7 @@ export interface PlaytestStoreState {
   /** Adds players with fresh decks, or removes the highest-numbered ones. */
   setPlayerCount(count: number, cards: readonly CardDefinition[]): void;
   /** Brings player-bound cards in line after cards were edited. */
-  syncBoundCards(cards: readonly CardDefinition[]): void;
+  syncStartingCards(cards: readonly CardDefinition[]): void;
 }
 
 type TableSettings = Pick<Settings, 'playerCount' | 'countersPersist' | 'sharedDeck' | 'sharedDeckEvents'>;
@@ -113,9 +113,9 @@ export function createPlaytestStore(repos: Repositories) {
       if (current) playerCountCommands(current, count, cards).forEach(get().dispatch);
     },
 
-    syncBoundCards(cards) {
+    syncStartingCards(cards) {
       const current = get().state;
-      if (current) syncBoundCardCommands(current, cards).forEach(get().dispatch);
+      if (current) syncStartingCardsCommands(current, cards).forEach(get().dispatch);
     },
   }));
 }

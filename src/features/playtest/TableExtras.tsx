@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { plainText } from '../../domain/cards/richText';
 import { displayName, type CardDefinition } from '../../domain/cards/types';
 import { COUNTER_COLORS, counterType, playerCounterTypes } from '../../domain/counters/colors';
 import { tokenInstance } from '../../domain/playtest/setup';
@@ -154,7 +155,7 @@ export function AddToTableDialog({
                   </span>
                   <span className="row-text">
                     <span className="row-name">{displayName(t)}</span>
-                    <span className="row-desc">{t.description}</span>
+                    <span className="row-desc">{plainText(t.description)}</span>
                   </span>
                 </button>
               </li>

@@ -139,9 +139,25 @@ export function applyCommand(state: PlaytestState, cmd: PlaytestCommand): Playte
         break;
       }
 
-      case 'unbindInstance': {
+      case 'clearStarter': {
         const inst = draft.instances[cmd.instanceId];
-        if (inst) inst.bound = false;
+        if (inst) inst.starter = false;
+        break;
+      }
+
+      case 'moveToPlayer': {
+        const inst = draft.instances[cmd.instanceId];
+        const player = draft.players[cmd.playerId];
+        if (!inst || !player) return;
+        const from = listOf(draft, inst);
+        const at = from?.indexOf(cmd.instanceId) ?? -1;
+        if (from && at >= 0) from.splice(at, 1);
+        if (inst.zone !== 'canvas' && !draft.rules.countersPersist) inst.counters = {};
+        player.zones.canvas.push(cmd.instanceId);
+        inst.ownerId = cmd.playerId;
+        inst.zone = 'canvas';
+        inst.faceUp = ZONE_RULES.canvas.faceUp;
+        inst.position = clampPos(cmd.position);
         break;
       }
 

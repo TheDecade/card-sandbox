@@ -9,7 +9,16 @@ import {
   type Settings,
 } from '../domain/settings/types';
 
-export const cardDefinitionSchema = z.object({
+/** Cards saved before the property was renamed carry boundPlayer. */
+const renameLegacyFields = (raw: unknown) => {
+  if (!raw || typeof raw !== 'object' || 'startingPlayer' in raw) return raw;
+  const { boundPlayer, ...rest } = raw as Record<string, unknown>;
+  return boundPlayer === undefined ? raw : { ...rest, startingPlayer: boundPlayer };
+};
+
+export const cardDefinitionSchema = z.preprocess(
+  renameLegacyFields,
+  z.object({
   id: z.string().min(1),
   name: z.string(),
   cost: z.string(),
@@ -18,14 +27,15 @@ export const cardDefinitionSchema = z.object({
   description: z.string(),
   imageId: z.string().nullable(),
   enabled: z.boolean(),
-  boundPlayer: z.number().int().min(0).default(0), // added later: older cards are unbound
+  startingPlayer: z.number().int().min(0).default(0), // added later: older cards start in the decks
   shared: z.boolean().default(false), // added later: older cards go into the players' decks
   eventNumber: z.number().int().min(1).default(1), // added later
   isToken: z.boolean().default(false), // added later
   createdAt: z.number(),
   updatedAt: z.number(),
   extra: z.record(z.string(), z.unknown()).optional(),
-});
+  }),
+);
 
 export const settingsSchema = z.object({
   schemaVersion: z.number().int(),
@@ -76,7 +86,8 @@ export const playtestSchema = z.object({
       faceUp: z.boolean(),
       tapped: z.boolean(),
       counters: z.record(z.string(), z.number()),
-      bound: z.boolean().default(false), // added in v4
+      bound: z.boolean().optional(), // v4, renamed in v6
+      starter: z.boolean().optional(), // the copy placed on a table at the start
       shared: z.boolean().default(false), // added in v5
       token: z.boolean().default(false), // added in v6
       tokenText: z.string().optional(), // added in v6

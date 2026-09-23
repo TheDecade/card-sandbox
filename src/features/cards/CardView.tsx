@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { parseRichText } from '../../domain/cards/richText';
 import './card.css';
 import { CostView } from './CostView';
 import { useFitText } from './useFitText';
@@ -65,10 +66,22 @@ function BlankFace({ card }: { card: CardContent }) {
       <Counters counters={card.counters} />
       <div className="card-face">
         <div ref={textRef} className="card-text">
-          {card.description}
+          <RichText text={card.description} />
         </div>
       </div>
     </div>
+  );
+}
+
+/** Card text with its **bold** and *italic* markup drawn. */
+export function RichText({ text }: { text: string }) {
+  return (
+    <>
+      {parseRichText(text).map((s, i) => {
+        const out = s.italic ? <em>{s.text}</em> : s.text;
+        return <span key={i}>{s.bold ? <strong>{out}</strong> : out}</span>;
+      })}
+    </>
   );
 }
 
@@ -103,7 +116,7 @@ function FullFace({ card }: { card: CardContent }) {
           <div className="card-type">{[card.type, card.subtype].filter(Boolean).join(' - ')}</div>
         ) : null}
         <div ref={textRef} className="card-text">
-          {card.description}
+          <RichText text={card.description} />
         </div>
       </div>
     </div>

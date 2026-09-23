@@ -2,8 +2,9 @@
 import { DEFAULT_RULES, PLAYTEST_SCHEMA_VERSION, type PlaytestState } from '../domain/playtest/types';
 
 /** A playtest as it may have been saved by any earlier version. */
-type StoredInstance = Omit<PlaytestState['instances'][string], 'bound' | 'shared' | 'token'> & {
-  bound?: boolean;
+type StoredInstance = Omit<PlaytestState['instances'][string], 'starter' | 'shared' | 'token'> & {
+  bound?: boolean; // renamed to starter in v6
+  starter?: boolean;
   shared?: boolean;
   token?: boolean;
 };
@@ -28,11 +29,12 @@ export function migratePlaytest(p: StoredPlaytest): PlaytestState {
     // v2 → v3: player values added; none set yet means every value is at its start.
     // v5 → v6: counters on the table added.
     players: p.players.map((pl) => ({ ...pl, values: pl.values ?? {}, markers: pl.markers ?? [] })),
-    // v3 → v4: bound instances; v4 → v5: shared deck; v5 → v6: tokens. Older games have none.
+    // v3 → v4: cards placed at the start (called "bound" until v6); v4 → v5: shared deck;
+    // v5 → v6: tokens. Older games have none of them.
     instances: Object.fromEntries(
       Object.entries(p.instances).map(([id, i]) => [
         id,
-        { ...i, bound: i.bound ?? false, shared: i.shared ?? false, token: i.token ?? false },
+        { ...i, starter: i.starter ?? i.bound ?? false, shared: i.shared ?? false, token: i.token ?? false },
       ]),
     ),
     sharedDeck: p.sharedDeck ?? null,

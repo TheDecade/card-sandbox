@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { BOLD, ITALIC } from '../../domain/cards/richText';
 import { cardFieldsDiffer, type CardDefinition } from '../../domain/cards/types';
 import { useImageUrl } from '../../images/useImageUrl';
 import { useLibrary } from '../../state/libraryStore';
@@ -32,6 +33,21 @@ export function CardEditorDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const imageUrl = useImageUrl(draft.imageId, 'thumb');
+  const descriptionEl = useRef<HTMLTextAreaElement>(null);
+
+  /** Wraps the selected description text in **bold** or *italic* markers (or starts an empty pair). */
+  function markUp(marker: string) {
+    const el = descriptionEl.current;
+    if (!el) return;
+    const { selectionStart: from, selectionEnd: to, value } = el;
+    const selected = value.slice(from, to);
+    update({ description: value.slice(0, from) + marker + selected + marker + value.slice(to) });
+    const at = from + marker.length;
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(at, at + selected.length);
+    });
+  }
 
   const dirty = isNew || cardFieldsDiffer(draft, initial);
   const update = (patch: Partial<CardDefinition>) => setDraft((d) => ({ ...d, ...patch }));
@@ -119,7 +135,17 @@ export function CardEditorDialog({
 
             <label className="field">
               <span className="field-label">Description</span>
+              <div className="text-tools">
+                <button className="btn btn-bold" aria-label="Bold" onClick={() => markUp(BOLD)}>
+                  B
+                </button>
+                <button className="btn btn-italic" aria-label="Italic" onClick={() => markUp(ITALIC)}>
+                  I
+                </button>
+                <span className="muted field-hint">around the selected words</span>
+              </div>
               <textarea
+                ref={descriptionEl}
                 value={draft.description}
                 rows={5}
                 placeholder="What the card does"
@@ -144,8 +170,8 @@ export function CardEditorDialog({
               <Toggle
                 checked={draft.isToken}
                 label="Token"
-                // A token is in no deck, so it is neither shared nor bound.
-                onChange={(isToken) => update(isToken ? { isToken, shared: false, boundPlayer: 0 } : { isToken })}
+                // A token is in no deck, so it has no starting table either.
+                onChange={(isToken) => update(isToken ? { isToken, shared: false, startingPlayer: 0 } : { isToken })}
               />
               <span className="muted field-hint">
                 {draft.isToken ? 'In no deck: double-tap the table to create it' : 'An ordinary card'}
@@ -158,7 +184,7 @@ export function CardEditorDialog({
                 checked={draft.shared}
                 label="Shared deck"
                 // A card lives either in the shared deck or on one player's table, never both.
-                onChange={(shared) => update(shared ? { shared, boundPlayer: 0, isToken: false } : { shared })}
+                onChange={(shared) => update(shared ? { shared, startingPlayer: 0, isToken: false } : { shared })}
               />
               <span className="muted field-hint">
                 {!draft.shared
@@ -202,38 +228,38 @@ export function CardEditorDialog({
             )}
 
             <div className="field field-row">
-              <span className="field-label">Bound to</span>
+              <span className="field-label">Starts on</span>
               <div className="stepper stepper-small">
                 <button
                   className="btn"
-                  aria-label="Bind to previous player"
-                  disabled={draft.boundPlayer <= 0}
-                  onClick={() => update({ boundPlayer: draft.boundPlayer - 1 })}
+                  aria-label="Starting table: previous player"
+                  disabled={draft.startingPlayer <= 0}
+                  onClick={() => update({ startingPlayer: draft.startingPlayer - 1 })}
                 >
                   −
                 </button>
-                <output className="bound-value" aria-label="Player binding">
-                  {draft.boundPlayer === 0 ? 'None' : `Player ${draft.boundPlayer}`}
+                <output className="bound-value" aria-label="Starting table">
+                  {draft.startingPlayer === 0 ? 'The decks' : `Player ${draft.startingPlayer}`}
                 </output>
                 <button
                   className="btn"
-                  aria-label="Bind to next player"
+                  aria-label="Starting table: next player"
                   disabled={
-                    draft.shared || draft.isToken || draft.boundPlayer >= Math.max(playerCount, draft.boundPlayer)
+                    draft.shared || draft.isToken || draft.startingPlayer >= Math.max(playerCount, draft.startingPlayer)
                   }
-                  onClick={() => update({ boundPlayer: draft.boundPlayer + 1 })}
+                  onClick={() => update({ startingPlayer: draft.startingPlayer + 1 })}
                 >
                   +
                 </button>
               </div>
               <span className="muted field-hint">
                 {draft.isToken
-                  ? 'Tokens are not bound'
+                  ? 'Tokens start nowhere: you create them on the table'
                   : draft.shared
-                    ? 'Shared-deck cards are not bound'
-                  : draft.boundPlayer === 0
-                    ? 'Shuffled into every deck'
-                    : `Starts on Player ${draft.boundPlayer}'s table, not in the decks`}
+                    ? 'Shared-deck cards start in the shared deck'
+                    : draft.startingPlayer === 0
+                      ? 'Shuffled into every deck'
+                      : `Starts on Player ${draft.startingPlayer}'s table; it can be handed to another player later`}
               </span>
             </div>
 

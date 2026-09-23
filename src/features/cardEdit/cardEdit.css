@@ -153,6 +153,24 @@
   background: #b98a2e;
   color: #1d1d1b;
 }
+.text-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.text-tools .btn {
+  min-width: 44px;
+  padding: 0 10px;
+}
+.btn-bold {
+  font-weight: 800;
+}
+.btn-italic {
+  font-style: italic;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
 .row-tag-token {
   background: #2d4f63;
   color: #d7ecf7;

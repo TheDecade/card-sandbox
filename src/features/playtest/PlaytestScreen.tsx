@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import type { CardDefinition, CardId } from '../../domain/cards/types';
 import type { PlaytestCommand, ZoneTarget } from '../../domain/playtest/commands';
 import { SHARED_ZONE_SIZE, type InstanceId, type PlaytestState, type Vec2 } from '../../domain/playtest/types';
+import { latePosition } from '../../domain/playtest/setup';
 import { viewCard, type VisibleCard } from '../../domain/playtest/visibility';
 import { useGestureConfig } from '../../gestures/config';
 import { useGestures } from '../../gestures/useGestures';
@@ -81,6 +82,7 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
   const [counterFor, setCounterFor] = useState<InstanceId | null>(null);
   const [addAt, setAddAt] = useState<Vec2 | null>(null); // double-tapped spot on the table
   const [markerFor, setMarkerFor] = useState<string | null>(null);
+  const [handTo, setHandTo] = useState<InstanceId | null>(null);
   const [openPile, setOpenPile] = useState<Pile | null>(null);
   const [deckDrop, setDeckDrop] = useState<InstanceId | null>(null);
   const [dialog, setDialog] = useState<'deck' | 'sharedDeck' | 'menu' | 'gestures' | 'reset' | 'values' | null>(null);
@@ -518,6 +520,39 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
           onClose={() => setAddAt(null)}
         />
       )}
+      {handTo && (
+        <Modal onClose={() => setHandTo(null)}>
+          <div className="dialog" role="dialog" aria-modal="true" aria-label="Hand the card to another player">
+            <h3>Hand this card to…</h3>
+            <p>It lands face-up on that player's table.</p>
+            <div className="dialog-actions dialog-actions-stack">
+              {state.players
+                .filter((p) => p.id !== playerId)
+                .map((p) => (
+                  <button
+                    key={p.id}
+                    className="btn btn-big btn-primary"
+                    onClick={() => {
+                      dispatch({
+                        type: 'moveToPlayer',
+                        instanceId: handTo,
+                        playerId: p.id,
+                        position: latePosition(p.zones.canvas.length),
+                      });
+                      setHandTo(null);
+                      notify(`Handed to Player ${p.id + 1}`);
+                    }}
+                  >
+                    Player {p.id + 1}
+                  </button>
+                ))}
+              <button className="btn btn-big" onClick={() => setHandTo(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
       {markerFor && (
         <ConfirmDialog
           title="Remove this counter?"
@@ -550,6 +585,17 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
               >
                 Counters
               </button>
+              {playerCount > 1 && magnified && state.instances[magnified]?.ownerId === playerId && (
+                <button
+                  className="btn btn-big"
+                  onClick={() => {
+                    setHandTo(magnified);
+                    setMagnified(null);
+                  }}
+                >
+                  Hand to…
+                </button>
+              )}
             </div>
           </div>
         </Modal>

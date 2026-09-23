@@ -23,6 +23,7 @@ export function DefinitionCard({
         name: displayName(card),
         cost: card.cost,
         type: card.type,
+        subtype: card.subtype,
         description: card.description,
         imageUrl,
         artHue: hueFromString(card.id),

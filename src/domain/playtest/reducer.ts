@@ -41,6 +41,14 @@ export function applyCommand(state: PlaytestState, cmd: PlaytestCommand): Playte
         break;
       }
 
+      case 'untapAll': {
+        for (const id of draft.players[cmd.playerId]?.zones.canvas ?? []) {
+          const inst = draft.instances[id];
+          if (inst) inst.tapped = false;
+        }
+        break;
+      }
+
       case 'changeCounters': {
         const inst = draft.instances[cmd.instanceId];
         if (!inst || !inst.faceUp) return; // face-down cards can't be handled

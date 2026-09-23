@@ -7,6 +7,7 @@ import { useGestureConfig } from '../../gestures/config';
 import { useGestures } from '../../gestures/useGestures';
 import { getDropZoneRect, hitTestDropZone, setDropHover, useDropZone } from '../../gestures/dropZones';
 import type { Point } from '../../gestures/recognizer';
+import { playerHue } from '../../domain/players/colors';
 import { useLibrary } from '../../state/libraryStore';
 import { usePlaytest } from '../../state/playtestStore';
 import { ConfirmDialog, Modal } from '../../ui/Modal';
@@ -325,6 +326,7 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
       <div className="table-main">
         <div
           className="canvas drop-zone"
+          style={{ '--player-hue': playerHue(playerId) } as CSSProperties}
           ref={(el) => {
             canvasZone(el);
             zoom.canvasRef(el);
@@ -375,6 +377,12 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
             </div>
           </div>
         </div>
+
+        {player.zones.canvas.some((id) => state.instances[id]?.tapped) && (
+          <button className="untap-all" onClick={() => dispatch({ type: 'untapAll', playerId })}>
+            Untap all
+          </button>
+        )}
 
         <div className="corner">
           <div className="piles">
@@ -528,8 +536,21 @@ function Table({ state, onBack }: { state: PlaytestState; onBack: () => void }) 
 
       {magnifiedCard && magnifiedCard.kind !== 'hidden' && (
         <Modal className="scrim magnify-scrim" onClose={() => setMagnified(null)}>
-          <div className="magnify-card">
-            <VisibleCardView card={magnifiedCard} variant="full" />
+          <div>
+            <div className="magnify-card">
+              <VisibleCardView card={magnifiedCard} variant="full" />
+            </div>
+            <div className="magnify-actions">
+              <button
+                className="btn btn-big"
+                onClick={() => {
+                  setCounterFor(magnified);
+                  setMagnified(null);
+                }}
+              >
+                Counters
+              </button>
+            </div>
           </div>
         </Modal>
       )}

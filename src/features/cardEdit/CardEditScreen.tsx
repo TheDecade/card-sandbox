@@ -156,7 +156,9 @@ function CardRow({
         <span className="row-text">
           <span className="row-name">
             {displayName(card)}
-            {card.type && <span className="row-type"> · {card.type}</span>}
+            {(card.type || card.subtype) && (
+              <span className="row-type"> · {[card.type, card.subtype].filter(Boolean).join(' - ')}</span>
+            )}
           </span>
           <span className="row-desc">{card.description || '—'}</span>
         </span>

@@ -60,7 +60,7 @@
   border-radius: 8cqw;
   background: #3b6b52;
   color: white;
-  font-size: 9cqw;
+  font-size: 8.1cqw;
 }
 
 .card-art {
@@ -125,6 +125,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: 50% 15%; /* square art: keep more of the top of the picture in view */
   display: block;
   pointer-events: none; /* no Safari image drag / save menu */
   -webkit-touch-callout: none;
@@ -198,7 +199,7 @@
   transform: translate(-0.2em, -0.2em);
 }
 .card-cost-pips {
-  font-size: 8cqw;
+  font-size: 7.2cqw;
 }
 .row-cost-pips {
   font-size: 1.05rem;
@@ -208,7 +209,7 @@
 .card-type {
   margin-top: -1.5cqw;
   text-align: right;
-  font-size: 7cqw;
+  font-size: 5.6cqw;
   font-weight: 700;
   font-style: italic;
   color: #5b5446;
@@ -218,10 +219,10 @@
 }
 /* Long costs shrink so the card name keeps its room. */
 .card-cost-pips[data-size='sm'] {
-  font-size: 6.5cqw;
+  font-size: 5.85cqw;
 }
 .card-cost-pips[data-size='xs'] {
-  font-size: 5.2cqw;
+  font-size: 4.7cqw;
 }
 .card-name {
   min-width: 30%;

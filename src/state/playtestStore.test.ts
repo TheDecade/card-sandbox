@@ -13,6 +13,7 @@ const CARDS: CardDefinition[] = [1, 2, 3].map((n) => ({
   name: `Card ${n}`,
   cost: '1',
   type: '',
+  subtype: '',
   description: '',
   imageId: null,
   enabled: true,

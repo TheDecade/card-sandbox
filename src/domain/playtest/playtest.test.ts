@@ -24,6 +24,7 @@ function card(n: number, enabled = true, shared = false, eventNumber = 1): CardD
     name: `Card ${n}`,
     cost: String(n),
     type: '',
+    subtype: '',
     description: '',
     imageId: null,
     enabled,
@@ -283,6 +284,17 @@ describe('tapping, counters, canvas moves', () => {
     expect(run(s, { type: 'toggleTapped', instanceId: a }, { type: 'toggleTapped', instanceId: a }).instances[a]!.tapped).toBe(false);
     const inDeck = deckOf(s)[0]!;
     expect(run(s, { type: 'toggleTapped', instanceId: inDeck })).toBe(s);
+  });
+
+  it('untaps every card on one table', () => {
+    const s0 = fresh(2);
+    const ids = deckOf(s0, 0).slice(0, 2);
+    const onTable = ids.map((id): PlaytestCommand => ({ type: 'moveCard', instanceId: id, to: { zone: 'canvas', position: { x: 0.5, y: 0.5 } } }));
+    const tapped = run(s0, ...onTable, ...ids.map((id): PlaytestCommand => ({ type: 'toggleTapped', instanceId: id })));
+    expect(ids.every((id) => tapped.instances[id]!.tapped)).toBe(true);
+    const s = run(tapped, { type: 'untapAll', playerId: 0 });
+    expect(ids.every((id) => !s.instances[id]!.tapped)).toBe(true);
+    expect(checkInvariants(s)).toEqual([]);
   });
 
   it('adds and removes counters per color, never below zero', () => {

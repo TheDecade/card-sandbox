@@ -20,6 +20,7 @@ export type PlaytestCommand =
   | { type: 'moveCard'; instanceId: InstanceId; to: ZoneTarget; playerId?: PlayerId }
   | { type: 'moveOnCanvas'; instanceId: InstanceId; position: Vec2 } // also brings to front
   | { type: 'toggleTapped'; instanceId: InstanceId }
+  | { type: 'untapAll'; playerId: PlayerId } // every card on that player's table
   | { type: 'changeCounters'; instanceId: InstanceId; color: CounterColorId; delta: number }
   | { type: 'setDeckOrder'; playerId: PlayerId; order: InstanceId[] }
   | { type: 'setSharedDeckOrder'; order: InstanceId[] }

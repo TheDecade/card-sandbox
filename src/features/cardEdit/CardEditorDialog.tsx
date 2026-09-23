@@ -109,6 +109,15 @@ export function CardEditorDialog({
             </label>
 
             <label className="field">
+              <span className="field-label">Subtype</span>
+              <input
+                value={draft.subtype}
+                placeholder="Shown after the type, e.g. Colony"
+                onChange={(e) => update({ subtype: e.target.value })}
+              />
+            </label>
+
+            <label className="field">
               <span className="field-label">Description</span>
               <textarea
                 value={draft.description}

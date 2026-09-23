@@ -14,6 +14,7 @@ export const cardDefinitionSchema = z.object({
   name: z.string(),
   cost: z.string(),
   type: z.string().default(''), // added later: older cards have no type
+  subtype: z.string().default(''), // added later
   description: z.string(),
   imageId: z.string().nullable(),
   enabled: z.boolean(),

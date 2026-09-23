@@ -13,6 +13,7 @@ const fileSchema = z.object({
     z.object({
       name: z.string(),
       type: z.string().default(''),
+      subtype: z.string().default(''),
       cost: z.string().default(''),
       description: z.string().default(''),
       enabled: z.boolean().default(true),

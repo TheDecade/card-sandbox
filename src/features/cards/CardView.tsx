@@ -9,6 +9,7 @@ export interface CardContent {
   name: string;
   cost: string;
   type?: string;
+  subtype?: string;
   description: string;
   imageUrl?: string | null;
   artHue?: number; // placeholder art color when there is no image
@@ -98,7 +99,9 @@ function FullFace({ card }: { card: CardContent }) {
           {card.imageUrl && <img src={card.imageUrl} alt="" draggable={false} />}
           <Counters counters={card.counters} />
         </div>
-        {card.type ? <div className="card-type">{card.type}</div> : null}
+        {card.type || card.subtype ? (
+          <div className="card-type">{[card.type, card.subtype].filter(Boolean).join(' - ')}</div>
+        ) : null}
         <div ref={textRef} className="card-text">
           {card.description}
         </div>

@@ -1,3 +1,5 @@
+import { playerColorHex } from '../players/colors';
+
 export type CounterColorId = string; // id of any counter type: "red", "p2", ...
 
 export interface CounterType {
@@ -17,10 +19,9 @@ export const COUNTER_COLORS: readonly CounterType[] = [
   { id: 'white', kind: 'color', label: 'White', hex: '#f0f0f0' },
 ];
 
-const PLAYER_COUNTER_HEX = '#2b313a';
 const PLAYER_ID = /^p([1-9]\d*)$/;
 
-/** Player counters are told apart by their label ("p1", "p2", …) rather than their color. */
+/** Player counters carry their player's color and label ("p1", "p2", …). */
 export const playerCounterId = (playerIndex: number): CounterColorId => `p${playerIndex + 1}`;
 
 export function playerCounterTypes(playerCount: number): CounterType[] {
@@ -30,7 +31,8 @@ export function playerCounterTypes(playerCount: number): CounterType[] {
 export function counterType(id: CounterColorId): CounterType | undefined {
   const color = COUNTER_COLORS.find((c) => c.id === id);
   if (color) return color;
-  if (PLAYER_ID.test(id)) return { id, kind: 'player', label: id, hex: PLAYER_COUNTER_HEX };
+  const m = PLAYER_ID.exec(id);
+  if (m) return { id, kind: 'player', label: id, hex: playerColorHex(Number(m[1]) - 1) };
   return undefined;
 }
 

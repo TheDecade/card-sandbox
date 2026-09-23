@@ -9,6 +9,7 @@ export interface CardDefinition {
   name: string;
   cost: string; // Oracle-style symbols "{2}{W}", or free text
   type: string; // usually one short word, shown between the picture and the description
+  subtype: string; // shown next to the type, after a dash; may be empty
   description: string;
   imageId: ImageId | null; // reference into the image library, never a copy
   enabled: boolean; // only enabled cards go into newly built decks
@@ -31,6 +32,7 @@ export function newCardDefinition(now = Date.now()): CardDefinition {
     name: '',
     cost: '',
     type: '',
+    subtype: '',
     description: '',
     imageId: null,
     enabled: true,
@@ -49,6 +51,7 @@ export function cardFieldsDiffer(a: CardDefinition, b: CardDefinition): boolean 
     a.name !== b.name ||
     a.cost !== b.cost ||
     a.type !== b.type ||
+    a.subtype !== b.subtype ||
     a.description !== b.description ||
     a.imageId !== b.imageId ||
     a.enabled !== b.enabled ||

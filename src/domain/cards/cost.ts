@@ -63,6 +63,33 @@ export function parseCost(cost: string): CostToken[] {
   return tokens;
 }
 
+/**
+ * What a cost is worth when sorting: a number counts itself, every other symbol counts 1, and {X}
+ * counts nothing. A cost typed without braces adds up its digits and its letters ("2R" = 3).
+ */
+export function costValue(cost: string): number {
+  let total = 0;
+  for (const token of parseCost(cost)) {
+    switch (token.kind) {
+      case 'generic':
+        total += Number(token.value) || 0;
+        break;
+      case 'color':
+      case 'hybrid':
+      case 'unknown':
+        total += 1;
+        break;
+      case 'plain':
+        total += (token.text.match(/\d+/g) ?? []).reduce((sum, n) => sum + Number(n), 0);
+        total += (token.text.match(/[A-Za-z]/g) ?? []).length;
+        break;
+      case 'x':
+        break;
+    }
+  }
+  return total;
+}
+
 // ---------- editing helpers (used by the symbol buttons in the card editor) ----------
 
 /** Appends a symbol, e.g. "W" → "…{W}", "W/U" → "…{W/U}". */

@@ -153,6 +153,25 @@
   background: #b98a2e;
   color: #1d1d1b;
 }
+.editor-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.editor-head h3 {
+  flex: 1;
+  margin: 0;
+}
+.editor-head .btn {
+  min-width: 52px;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+.editor-count {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 .text-tools {
   display: flex;
   align-items: center;

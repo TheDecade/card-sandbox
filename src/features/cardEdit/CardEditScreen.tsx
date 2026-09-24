@@ -1,5 +1,6 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useMemo, useRef, useState } from 'react';
+import { costValue } from '../../domain/cards/cost';
 import { plainText } from '../../domain/cards/richText';
 import { displayName, newCardDefinition, type CardDefinition } from '../../domain/cards/types';
 import { useImageUrl } from '../../images/useImageUrl';
@@ -12,6 +13,8 @@ import { ImportCardsButton } from './ImportCards';
 import './cardEdit.css';
 
 type Filter = 'all' | 'enabled' | 'disabled';
+type Sort = 'added' | 'name' | 'cost';
+const SORT_LABEL: Record<Sort, string> = { added: 'Added', name: 'Name', cost: 'Cost' };
 const ROW_HEIGHT = 92;
 
 export function CardEditScreen({ onBack }: { onBack: () => void }) {
@@ -19,6 +22,7 @@ export function CardEditScreen({ onBack }: { onBack: () => void }) {
   const setEnabled = useLibrary((s) => s.setEnabled);
   const addSampleCards = useLibrary((s) => s.addSampleCards);
   const [filter, setFilter] = useState<Filter>('all');
+  const [sort, setSort] = useState<Sort>('added');
   const [editing, setEditing] = useState<{ card: CardDefinition; isNew: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -27,10 +31,15 @@ export function CardEditScreen({ onBack }: { onBack: () => void }) {
     const enabled = cards.filter((c) => c.enabled).length;
     return { all: cards.length, enabled, disabled: cards.length - enabled };
   }, [cards]);
-  const visible = useMemo(
-    () => cards.filter((c) => filter === 'all' || c.enabled === (filter === 'enabled')),
-    [cards, filter],
-  );
+  const visible = useMemo(() => {
+    const kept = cards.filter((c) => filter === 'all' || c.enabled === (filter === 'enabled'));
+    if (sort === 'added') return kept;
+    const byName = (a: CardDefinition, b: CardDefinition) =>
+      displayName(a).localeCompare(displayName(b), undefined, { sensitivity: 'base', numeric: true });
+    return [...kept].sort((a, b) =>
+      sort === 'name' ? byName(a, b) : costValue(a.cost) - costValue(b.cost) || byName(a, b),
+    );
+  }, [cards, filter, sort]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
@@ -60,6 +69,19 @@ export function CardEditScreen({ onBack }: { onBack: () => void }) {
               onClick={() => setFilter(f)}
             >
               {f[0]!.toUpperCase() + f.slice(1)} <span className="seg-count">{counts[f]}</span>
+            </button>
+          ))}
+        </div>
+        <div className="segmented" role="tablist" aria-label="Sort cards">
+          {(['added', 'name', 'cost'] as const).map((s) => (
+            <button
+              key={s}
+              role="tab"
+              aria-selected={sort === s}
+              className={sort === s ? 'is-active' : ''}
+              onClick={() => setSort(s)}
+            >
+              {SORT_LABEL[s]}
             </button>
           ))}
         </div>
@@ -117,14 +139,28 @@ export function CardEditScreen({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
-      {editing && (
-        <CardEditorDialog
-          key={editing.card.id}
-          initial={editing.card}
-          isNew={editing.isNew}
-          onClose={() => setEditing(null)}
-        />
-      )}
+      {editing &&
+        (() => {
+          // Stepping through the list uses the order on screen, so it follows the sort and filter.
+          const at = editing.isNew ? -1 : visible.findIndex((c) => c.id === editing.card.id);
+          return (
+            <CardEditorDialog
+              key={editing.card.id}
+              initial={editing.card}
+              isNew={editing.isNew}
+              onClose={() => setEditing(null)}
+              step={
+                at >= 0
+                  ? (delta) => {
+                      const next = visible[at + delta];
+                      if (next) setEditing({ card: next, isNew: false });
+                    }
+                  : undefined
+              }
+              position={at >= 0 ? { index: at, total: visible.length } : undefined}
+            />
+          );
+        })()}
     </main>
   );
 }

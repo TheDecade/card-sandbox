@@ -113,7 +113,11 @@ function FullFace({ card }: { card: CardContent }) {
           <Counters counters={card.counters} />
         </div>
         {card.type || card.subtype ? (
-          <div className="card-type">{[card.type, card.subtype].filter(Boolean).join(' - ')}</div>
+          <div className="card-type">
+            {card.type}
+            {card.type && card.subtype ? ' - ' : ''}
+            {card.subtype && <span className="card-subtype">{card.subtype}</span>}
+          </div>
         ) : null}
         <div ref={textRef} className="card-text">
           <RichText text={card.description} />

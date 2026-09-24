@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { appendSymbol, incrementGeneric, parseCost, removeLastSymbol } from './cost';
+import { appendSymbol, costValue, incrementGeneric, parseCost, removeLastSymbol } from './cost';
+
+describe('costValue', () => {
+  it('adds up the symbols of a cost', () => {
+    expect(costValue('')).toBe(0);
+    expect(costValue('{2}{W}{U}')).toBe(4);
+    expect(costValue('{10}')).toBe(10);
+    expect(costValue('{X}{W}')).toBe(1); // X counts nothing
+    expect(costValue('{W/U}{2/G}')).toBe(2); // a hybrid is one symbol
+    expect(costValue('2R')).toBe(3); // written without braces
+  });
+});
 
 describe('parseCost', () => {
   it('reads Oracle-style symbols', () => {

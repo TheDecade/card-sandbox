@@ -1,4 +1,6 @@
 import { useRef, useState } from 'react';
+import type { Point } from '../../gestures/recognizer';
+import { useGestures } from '../../gestures/useGestures';
 import { BOLD, ITALIC } from '../../domain/cards/richText';
 import { cardFieldsDiffer, type CardDefinition } from '../../domain/cards/types';
 import { useImageUrl } from '../../images/useImageUrl';
@@ -14,14 +16,21 @@ import { ImagePicker } from './ImagePicker';
  * Edits a copy of the card. Nothing is written until Save; Discard (or tapping outside) throws
  * the copy away, asking first when there are unsaved changes. A new card only exists once saved.
  */
+const SWIPE_MIN_PX = 60; // sideways distance that moves to the next card
+
 export function CardEditorDialog({
   initial,
   isNew,
   onClose,
+  step,
+  position,
 }: {
   initial: CardDefinition;
   isNew: boolean;
   onClose: () => void;
+  /** Opens the previous (-1) or next (+1) card of the list; absent while there is none. */
+  step?: (delta: number) => void;
+  position?: { index: number; total: number };
 }) {
   const saveCard = useLibrary((s) => s.saveCard);
   const playerCount = useLibrary((s) => s.settings.playerCount);
@@ -50,6 +59,40 @@ export function CardEditorDialog({
   }
 
   const dirty = isNew || cardFieldsDiffer(draft, initial);
+  const [blocked, setBlocked] = useState(false); // tried to swipe away with unsaved changes
+
+  function goTo(delta: number) {
+    if (!step) return;
+    if (dirty) {
+      setBlocked(true);
+      setTimeout(() => setBlocked(false), 2500);
+      return;
+    }
+    step(delta);
+  }
+
+  // Swiping sideways over the dialog moves through the list; the browser keeps vertical scrolling,
+  // and a press that starts on a control (typing, sliders, buttons) is left alone.
+  const swipeStart = useRef<Point | null>(null);
+  const swipe = useGestures({
+    canStartDrag: (start, p) => Math.abs(p.x - start.x) > Math.abs(p.y - start.y),
+    onDragStart: ({ start }) => (swipeStart.current = start),
+    onDragEnd: (p) => {
+      const start = swipeStart.current;
+      swipeStart.current = null;
+      if (!start) return;
+      const dx = p.x - start.x;
+      if (Math.abs(dx) >= SWIPE_MIN_PX && Math.abs(dx) > Math.abs(p.y - start.y)) goTo(dx < 0 ? 1 : -1);
+    },
+    onDragCancel: () => (swipeStart.current = null),
+  });
+  const swipeBind = {
+    ...swipe,
+    onPointerDown: (e: React.PointerEvent<HTMLElement>) => {
+      if ((e.target as HTMLElement).closest('input, textarea, select, button, [role="switch"]')) return;
+      swipe.onPointerDown(e);
+    },
+  };
   const update = (patch: Partial<CardDefinition>) => setDraft((d) => ({ ...d, ...patch }));
   const discard = () => (dirty ? setConfirmDiscard(true) : onClose());
 
@@ -67,8 +110,44 @@ export function CardEditorDialog({
 
   return (
     <Modal onClose={discard}>
-      <div className="dialog dialog-wide card-editor" role="dialog" aria-modal="true" aria-label="Edit card">
-        <h3>{isNew ? 'New card' : 'Edit card'}</h3>
+      <div
+        {...swipeBind}
+        className="dialog dialog-wide card-editor"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Edit card"
+      >
+        <div className="editor-head">
+          {step && (
+            <button className="btn" aria-label="Previous card" disabled={!position?.index} onClick={() => goTo(-1)}>
+              ‹
+            </button>
+          )}
+          <h3>
+            {isNew ? 'New card' : 'Edit card'}
+            {position && (
+              <span className="muted editor-count">
+                {' '}
+                {position.index + 1} of {position.total}
+              </span>
+            )}
+          </h3>
+          {step && (
+            <button
+              className="btn"
+              aria-label="Next card"
+              disabled={!position || position.index >= position.total - 1}
+              onClick={() => goTo(1)}
+            >
+              ›
+            </button>
+          )}
+        </div>
+        {blocked && (
+          <p className="picker-status" role="status">
+            Save or discard your changes before moving to another card.
+          </p>
+        )}
         <div className="editor-body">
           <div className="editor-preview">
             <DefinitionCard card={draft} variant="full" />
